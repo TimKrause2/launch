@@ -1,0 +1,16 @@
+rot_y_minus: matrix(
+	[cos(lat), 0, -sin(lat)],
+	[    0     , 1,      0     ],
+	[sin(lat), 0,  cos(lat)]);
+
+rot_z: matrix(
+	[cos(long), -sin(long), 0],
+	[sin(long),  cos(long), 0],
+	[    0    ,      0    , 1]);
+
+r0: matrix(
+	[1],
+	[0],
+	[0]);
+
+r: rot_z . rot_y_minus . r0;

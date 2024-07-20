@@ -1,0 +1,6 @@
+r1: p1/(1+e1*cos(x - w1));
+r2: p2/(1+e2*cos(x - w2));
+
+f: r1 - r2;
+
+dr1:diff(r1,x);
