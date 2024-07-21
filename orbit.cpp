@@ -873,15 +873,27 @@ void ballistic_orbit_params(
     Eigen::Vector3d n_e = (-(n0+n1)).normalized();
     Eigen::Matrix3d A_e = caams::AAA(-alpha,n_h);
     n_e = A_e*n_e;
-    Eigen::Vector3d z_axis(0,0,1);
-    Eigen::Vector3d n_an = z_axis.cross(n_h).normalized();
-    params.i = acos(n_h(2));
-    params.Omega = acos(n_an(0));
-    if(n_an(1)<0.0) params.Omega*=-1.0;
-    params.omega = acos(n_an.dot(n_e));
-    if(n_e(2)<0.0) params.omega*=-1.0;
+    orbital_plane_elements(n_h,n_e,params);
+    // Eigen::Vector3d z_axis(0,0,1);
+    // Eigen::Vector3d n_an = z_axis.cross(n_h).normalized();
+    // params.i = acos(n_h(2));
+    // params.Omega = acos(n_an(0));
+    // if(n_an(1)<0.0) params.Omega*=-1.0;
+    // params.omega = acos(n_an.dot(n_e));
+    // if(n_e(2)<0.0) params.omega*=-1.0;
     params.nu = theta;
 }
+
+Eigen::Matrix3d orbit_basis_90(
+        Eigen::Matrix3d A_basis)
+{
+    Eigen::Matrix3d A_basis_90;
+    A_basis_90.col(0) = A_basis.col(2);
+    A_basis_90.col(1) =-A_basis.col(1);
+    A_basis_90.col(2) = A_basis.col(0);
+    return A_basis_90;
+}
+
 
 
 

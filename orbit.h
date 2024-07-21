@@ -32,6 +32,11 @@ struct ModEquOrbitalParams
     void FromVector(Eigen::VectorXd v);
 };
 
+void orbital_plane_elements(
+        Eigen::Vector3d const &h,
+        Eigen::Vector3d const &e,
+        OrbitalParams &params);
+
 void orbital_elements(
         Eigen::Vector3d r, // location of secondary relative to primary in meters
         Eigen::Vector3d v, // velocity of secondary relative to primary in meters/second
@@ -143,9 +148,8 @@ void ballistic_orbit_params(
         Eigen::Vector3d const &r_end,
         double radius_apogee);
 
-
-
-
+Eigen::Matrix3d orbit_basis_90(
+        Eigen::Matrix3d A_basis);
 
 
 #endif

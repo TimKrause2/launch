@@ -1110,20 +1110,23 @@ bool Satellite::OptimizeICBMLaunch(
         double &T_reentry)
 {
     ICBMSimpleData bdata;
-
+    OrbitalParams params;
     // Calculate the orbit for the trajectory
     ballistic_orbit_params(
-                bdata.params,
+                params,
                 r_launch,
                 r_aim,
                 primary_body->m_radius + h_apogee);
 
+    Eigen::Matrix3d A_basis = orbit_basis(params);
+    Eigen::Matrix3d A_basis_90 = orbit_basis_90(A_basis);
+
     // calculate the estimate of the end of the boost phase
     Eigen::Vector3d r_boost;
     Eigen::Vector3d v_boost;
-    bdata.params.nu += 3.0*RAD_PER_DEG;
+    params.nu += 3.0*RAD_PER_DEG;
     orbit_state(
-                bdata.params,
+                params,
                 primary_body->m_mass,
                 m_mass,
                 r_boost,
@@ -1137,6 +1140,11 @@ bool Satellite::OptimizeICBMLaunch(
     bdata.v_vehicle0 = v_launch;
     bdata.r_boost = r_boost;
     bdata.v_boost = v_boost;
+    bdata.params = params;
+    bdata.params.i = M_PI/2.0;
+    bdata.params.Omega = M_PI/2.0;
+    bdata.params.omega = M_PI/2.0;
+    bdata.A_g2a = A_basis_90.transpose();
 
     bool is_spheroid;
     Spheroid *spheroid = dynamic_cast<Spheroid*>(primary_body);

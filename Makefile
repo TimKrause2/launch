@@ -1,4 +1,4 @@
-CPPFLAGS= -O2 -pthread -I/usr/include/PSOPT `pkg-config\
+CPPFLAGS=-ggdb -O2 -pthread -I/usr/include/PSOPT `pkg-config\
     --cflags freetype2 eigen3 ipopt gtkmm-4.0 epoxy` `sdl2-config --cflags`
 LDLIBS=-L/usr/lib/PSOPT -lPSOPT -lGLESv2 -ljpeg -ltiff\
     `pkg-config --libs freetype2 ipopt adolc gtkmm-4.0 epoxy` `sdl2-config --libs`

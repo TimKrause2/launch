@@ -97,7 +97,10 @@ static void events(adouble* e, adouble* initial_states, adouble* final_states,
         aVector3d h;
         adouble a;
         aVector5d params;
-        rv2os(r, v, md->mu, a, ecc, h, params);
+        aMatrix3d A_g2a = md->A_g2a.cast<adouble>();
+        aVector3d ra = A_g2a*r;
+        aVector3d va = A_g2a*v;
+        rv2os(ra, va, md->mu, a, ecc, h, params);
 
         ev.segment<6>(0) = xi;
         ev.segment<5>(6) = params;
@@ -143,7 +146,7 @@ bool icbm_simple_launch(
     data->ellint_1.resize(1, N_ELLIP_POINTS);
     data->ellint_2.resize(1, N_ELLIP_POINTS);
 
-    double alpha_min = 1e-9;
+    double alpha_min = 1e-12;
     double alpha0 = pow(alpha_min, 1.0/(N_ELLIP_POINTS-1));
     for(int i=0;i<N_ELLIP_POINTS;i++){
         double k = 1.0 - pow(alpha0, i);
@@ -339,6 +342,8 @@ static aVector3d g_accel_ring(
     adouble B = (1+rho)*(1+rho) + z*z;
     adouble m = 4*rho/B;
     adouble k = sqrt(m);
+    //std::cout << std::setprecision(16);
+    //std::cout << "k:" << k.value() << std::endl;
     adouble C = sqrt(B)*((rho-1)*(rho-1)+z*z);
     adouble K_m;//boost::math::ellint_1(k);
     adouble E_m;//boost::math::ellint_2(k);

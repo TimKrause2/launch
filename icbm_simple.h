@@ -20,6 +20,7 @@ struct ICBMSimpleData
     Eigen::Vector3d v_vehicle0;
     Eigen::Vector3d r_boost;
     Eigen::Vector3d v_boost;
+    Eigen::Matrix3d A_g2a; // transfrom global to analytic
     OrbitalParams params;
 };
 
