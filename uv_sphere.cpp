@@ -14,7 +14,7 @@ struct v_uv
 
 struct triangle
 {
-    unsigned short v0, v1, v2;
+    unsigned int v0, v1, v2;
 };
 
 bool initialized=false;
@@ -61,10 +61,10 @@ void uv_sphere_init(int Nlat, int Nlong)
     triangle *indices_it = indices;
 
     for(int lat=0;lat<Nlat;lat++){
-        unsigned short q_v0 = lat*(Nlong+1);
-        unsigned short q_v1 = q_v0 + (Nlong+1);
-        unsigned short q_v2 = q_v1 + 1;
-        unsigned short q_v3 = q_v0 + 1;
+        unsigned int q_v0 = lat*(Nlong+1);
+        unsigned int q_v1 = q_v0 + (Nlong+1);
+        unsigned int q_v2 = q_v1 + 1;
+        unsigned int q_v3 = q_v0 + 1;
         for(int lo=0;lo<Nlong;lo++){
             indices_it->v0 = q_v0;
             indices_it->v1 = q_v1;
@@ -149,7 +149,7 @@ void uv_sphere_draw(glm::mat4 mvp, GLuint tex_buff)
     glDrawElements(
                 GL_TRIANGLES,
                 Ntri*3,
-                GL_UNSIGNED_SHORT,
+                GL_UNSIGNED_INT,
                 (void*)0);
 
     glBindVertexArray(0);
