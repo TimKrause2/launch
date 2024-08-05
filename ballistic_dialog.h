@@ -13,8 +13,6 @@ class BallisticDialog : public Gtk::Window
 {
 private:
     BallisticLaunchData &bldata;
-    Glib::ustring gpsAlertMsg;
-    Glib::ustring numberAlertMsg;
 public:
     BallisticDialog(Gtk::Window& parent, BallisticLaunchData &bldata);
     ~BallisticDialog() override;

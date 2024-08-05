@@ -8,6 +8,8 @@
 
 #define RAD_PER_DEG (M_PI/180.0)
 #define DEG_PER_RAD (180.0/M_PI)
+Glib::ustring gpsAlertMsg("Unrecognized GPS coordinate: ");
+Glib::ustring numberAlertMsg("Unrecognized number: ");
 
 bool valid_gps(Glib::ustring& text)
 {
@@ -49,6 +51,23 @@ void text_to_number(Glib::ustring &text, double &value)
 {
     value = atof(text.data());
 }
+
+void gpsAlertDialog(Gtk::Window &parent, Glib::ustring text)
+{
+    auto dialog = Gtk::AlertDialog::create(gpsAlertMsg + text);
+    dialog->set_modal(true);
+    dialog->show(parent);
+}
+
+void numberAlertDialog(Gtk::Window &parent, Glib::ustring text)
+{
+    auto dialog = Gtk::AlertDialog::create(numberAlertMsg + text);
+    dialog->set_modal(true);
+    dialog->show(parent);
+}
+
+
+
 
 Glib::RefPtr<Gtk::CssProvider> new_entry_provider(void)
 {

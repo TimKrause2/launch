@@ -38,9 +38,7 @@ BallisticDialog::BallisticDialog(Gtk::Window& parent, BallisticLaunchData &bldat
       m_LabelThrust("Thrust acceleration (m/s/s)"),
       m_ButtonBox(Gtk::Orientation::HORIZONTAL, 0),
       m_Button_OK("Schedule"),
-      m_Button_Cancel("Cancel"),
-      gpsAlertMsg("Unrecognized GPS coordinate: "),
-      numberAlertMsg("Unrecognized number: ")
+      m_Button_Cancel("Cancel")
 {
     set_transient_for(parent);
     set_destroy_with_parent(true);
@@ -112,9 +110,7 @@ void BallisticDialog::on_launch_activate()
     if(valid_gps(text)){
         text_to_gps(text, bldata.lat_launch, bldata.long_launch);
     }else{
-        auto dialog = Gtk::AlertDialog::create(gpsAlertMsg + "Launch site");
-        dialog->set_modal(true);
-        dialog->show(*this);
+        gpsAlertDialog(*this, "Launch site");
         m_EntryLaunch.grab_focus();
     }
 }
@@ -125,9 +121,7 @@ void BallisticDialog::on_target_activate()
     if(valid_gps(text)){
         text_to_gps(text, bldata.lat_target, bldata.long_target);
     }else{
-        auto dialog = Gtk::AlertDialog::create(gpsAlertMsg + "Target");
-        dialog->set_modal(true);
-        dialog->show(*this);
+        gpsAlertDialog(*this, "Target");
         m_EntryTarget.grab_focus();
     }
 }
@@ -138,9 +132,7 @@ void BallisticDialog::on_T1_activate()
     if(valid_number(text)){
         text_to_number(text, bldata.T1);
     }else{
-        auto dialog = Gtk::AlertDialog::create(numberAlertMsg + "T1");
-        dialog->set_modal(true);
-        dialog->show(*this);
+        numberAlertDialog(*this, "T1");
         m_EntryT1.grab_focus();
     }
 }
@@ -151,9 +143,7 @@ void BallisticDialog::on_T2_activate()
     if(valid_number(text)){
         text_to_number(text, bldata.T2);
     }else{
-        auto dialog = Gtk::AlertDialog::create(numberAlertMsg + "T2");
-        dialog->set_modal(true);
-        dialog->show(*this);
+        numberAlertDialog(*this, "T2");
         m_EntryT2.grab_focus();
     }
 }
@@ -164,9 +154,7 @@ void BallisticDialog::on_thrust_activate()
     if(valid_number(text)){
         text_to_number(text, bldata.thrust);
     }else{
-        auto dialog = Gtk::AlertDialog::create(numberAlertMsg + "Thrust");
-        dialog->set_modal(true);
-        dialog->show(*this);
+        numberAlertDialog(*this, "Thrust");
         m_EntryThrust.grab_focus();
     }
 }
