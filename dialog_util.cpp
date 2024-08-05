@@ -50,3 +50,20 @@ void text_to_number(Glib::ustring &text, double &value)
     value = atof(text.data());
 }
 
+Glib::RefPtr<Gtk::CssProvider> new_entry_provider(void)
+{
+    Glib::RefPtr<Gtk::CssProvider> provider = Gtk::CssProvider::create();
+    provider->load_from_data(
+                "#Entry {\n"
+                "font-family:Monospace;\n"
+                "font-size:18pt;\n"
+                "}\n");
+    return provider;
+}
+
+void entry_set_font(Gtk::Widget &widget,
+                    Glib::RefPtr<Gtk::CssProvider> provider)
+{
+    widget.set_name("Entry");
+    widget.get_style_context()->add_provider(provider, 1);
+}

@@ -45,18 +45,13 @@ BallisticDialog::BallisticDialog(Gtk::Window& parent, BallisticLaunchData &bldat
     set_transient_for(parent);
     set_destroy_with_parent(true);
 
-    provider = Gtk::CssProvider::create();
-    provider->load_from_data(
-                "#Entry {\n"
-                "font-family:Monospace;\n"
-                "font-size:18pt;\n"
-                "]\n");
+    auto provider = new_entry_provider();
 
-    entry_set_font(m_EntryLaunch);
-    entry_set_font(m_EntryTarget);
-    entry_set_font(m_EntryT1);
-    entry_set_font(m_EntryT2);
-    entry_set_font(m_EntryThrust);
+    entry_set_font(m_EntryLaunch, provider);
+    entry_set_font(m_EntryTarget, provider);
+    entry_set_font(m_EntryT1, provider);
+    entry_set_font(m_EntryT2, provider);
+    entry_set_font(m_EntryThrust, provider);
 
     set_title("Ballistic Launch");
     set_child(m_Grid);
@@ -109,12 +104,6 @@ void BallisticDialog::buttons_clicked_connect(
 {
     m_Button_OK.signal_clicked().connect(sigc::bind(slot, "OK"));
     m_Button_Cancel.signal_clicked().connect(sigc::bind(slot, "Cancel"));
-}
-
-void BallisticDialog::entry_set_font(Gtk::Widget &widget)
-{
-    widget.set_name("Entry");
-    widget.get_style_context()->add_provider(provider, 1);
 }
 
 void BallisticDialog::on_launch_activate()

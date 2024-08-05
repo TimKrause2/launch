@@ -250,9 +250,9 @@ void LaunchData::init(void)
     //             launch_longitude*RAD_PER_DEG,
     //             launch_heading*RAD_PER_DEG);
     body_sat->ScheduleICBMLaunch(
-                30*RAD_PER_DEG, -90*RAD_PER_DEG,
-                -10*RAD_PER_DEG, -90*RAD_PER_DEG,
-                400, 1000, 20);
+                10*RAD_PER_DEG, -20*RAD_PER_DEG,
+                10*RAD_PER_DEG, 20*RAD_PER_DEG,
+                500, 1000, 20);
 
     earth_sat_system.AddBody(body_earth);
     earth_sat_system.AddBody(body_sat);
@@ -265,7 +265,7 @@ void LaunchData::init(void)
                 "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
                 FONT_SIZE,fontcolor,outlinecolor, 1.0 );
 
-    uv_sphere_init(640,1280);
+    uv_sphere_init(320,640);
 }
 
 void LaunchData::update_view_direction(int dx, int dy)

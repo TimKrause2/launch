@@ -36,9 +36,6 @@ protected:
     Gtk::Box m_ButtonBox;
     Gtk::Button m_Button_OK;
     Gtk::Button m_Button_Cancel;
-    Glib::RefPtr<Gtk::CssProvider> provider;
-
-    void entry_set_font(Gtk::Widget &widget);
 
     void on_launch_activate();
     void on_target_activate();

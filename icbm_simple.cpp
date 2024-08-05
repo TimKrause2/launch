@@ -73,6 +73,7 @@ static void dae(adouble* derivatives, adouble* path, adouble* states,
         dx.segment<3>(3) = ag + ar + at;
 
         path[0] = dot(u.data(), u.data(), 3);
+        path[1] = r_vehicle.norm();
 
     }
 }
@@ -171,7 +172,7 @@ bool icbm_simple_launch(
     problem.phases(1).nstates   = 6;
     problem.phases(1).ncontrols = 3;
     problem.phases(1).nevents   = 11;
-    problem.phases(1).npath     = 1;
+    problem.phases(1).npath     = 2;
     problem.phases(1).nodes    = (RowVectorXi(1) << 25).finished();
 
     psopt_level2_setup(problem, algorithm);
@@ -230,7 +231,9 @@ bool icbm_simple_launch(
     problem.phases(1).bounds.upper.controls(2) = 1;
 
     problem.phases(1).bounds.lower.path(0) = 1;
+    problem.phases(1).bounds.lower.path(1) = data->r_vehicle0.norm();
     problem.phases(1).bounds.upper.path(0) = 1;
+    problem.phases(1).bounds.upper.path(1) = data->r_vehicle0.norm()*5.0;
 
     problem.phases(1).bounds.lower.StartTime = 0.0;
     problem.phases(1).bounds.upper.StartTime = 0.0;

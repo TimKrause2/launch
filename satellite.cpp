@@ -1219,7 +1219,7 @@ bool Satellite::ScheduleICBMLaunch(
     Eigen::Vector3d n_r_vehicle = n_r_earth_frame(lat_vehicle, long_vehicle);
     Eigen::Vector3d n_r_target = n_r_earth_frame(lat_target, long_target);
     double mag_r_vehicle = m_radius + primary_body->m_radius;
-    double mag_r_target = primary_body->m_radius + 1000.0;
+    double mag_r_target = primary_body->m_radius + m_radius;
     Eigen::Vector3d r_p_vehicle = n_r_vehicle*mag_r_vehicle;
     Eigen::Vector3d r_p_target = n_r_target*mag_r_target;
     Eigen::Matrix3d A = caams::Ap(primary_body->p);

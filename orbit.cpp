@@ -66,21 +66,32 @@ void orbital_plane_elements(
 {
     Eigen::Vector3d n_h = h.normalized();
     Eigen::Vector3d n_e = e.normalized();
-    Eigen::Vector3d n_an;
-    params.i = acos(n_h(2));
-    if(params.i==0.0){
-        n_an = Eigen::Vector3d(1,0,0);
+
+    if(n_h(2)==1.0){
+        params.i = 0.0;
         params.Omega = 0.0;
+        params.omega = acos(n_e(0));
+        if(n_e(1)<0.0)
+            params.omega *= -1.0;
+    }else if(n_h(2)==-1.0){
+        params.i = M_PI;
+        params.Omega = 0.0;
+        params.omega = acos(n_e(0));
+        if(n_e(1)<0.0)
+            params.omega *= -1.0;
+
     }else{
+        params.i = acos(n_h(2));
         Eigen::Vector3d z_axis(0,0,1);
+        Eigen::Vector3d n_an;
         n_an = z_axis.cross(n_h).normalized();
         params.Omega = acos(n_an(0));
         if(n_an(1)<0.0)
             params.Omega*=-1.0;
+        params.omega = acos(n_an.dot(n_e));
+        if(n_e(2)<0.0)
+            params.omega*=-1.0;
     }
-    params.omega = acos(n_an.dot(n_e));
-    if(n_e(2)<0.0)
-        params.omega*=-1.0;
 }
 
 void orbital_elements(
