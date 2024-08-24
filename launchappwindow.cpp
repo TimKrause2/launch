@@ -142,6 +142,9 @@ bool LaunchAppWindow::key_pressed(guint keyval, guint keycode, Gdk::ModifierType
     case GDK_KEY_F9:
         ballistic_dialog_show();
         return true;
+    case GDK_KEY_F10:
+        icbm_dialog_show();
+        return true;
     default:
         return false;
     }
@@ -172,7 +175,7 @@ void LaunchAppWindow::on_ballistic_dialog_response(
     delete dialog;
 
     if(response == "OK"){
-        if(!ld.body_sat->ScheduleICBMLaunch(
+        if(!ld.body_sat->ScheduleBallisticLaunch(
                     bldata.lat_launch, bldata.long_launch,
                     bldata.lat_target, bldata.long_target,
                     bldata.T1, bldata.T2,
@@ -190,3 +193,42 @@ bool LaunchAppWindow::on_ballistic_dialog_close(BallisticDialog *pDialog)
     delete pDialog;
     return false;
 }
+
+void LaunchAppWindow::icbm_dialog_show()
+{
+    ICBMDialog* pDialog = new ICBMDialog(*this, icbm_data);
+    pDialog->set_modal(true);
+    pDialog->buttons_clicked_connect(
+                sigc::bind(
+                    sigc::mem_fun(*this, &LaunchAppWindow::on_icbm_dialog_response), pDialog));
+    pDialog->signal_close_request().connect(sigc::bind(
+        sigc::mem_fun(*this, &LaunchAppWindow::on_icbm_dialog_close), pDialog), false);
+    pDialog->set_visible(true);
+}
+
+void LaunchAppWindow::on_icbm_dialog_response(
+        const Glib::ustring& response,
+        ICBMDialog* dialog)
+{
+    delete dialog;
+
+    if(response == "OK"){
+        if(!ld.body_sat->ScheduleICBMLaunch(
+                    icbm_data.lat_launch, icbm_data.long_launch,
+                    icbm_data.hgt_launch,
+                    icbm_data.lat_target, icbm_data.long_target,
+                    icbm_data.hgt_target))
+        {
+            auto dialog = Gtk::AlertDialog::create("Optimizer failed!!! See terminal output.");
+            dialog->set_modal(true);
+            dialog->show(*this);
+        }
+    }
+}
+
+bool LaunchAppWindow::on_icbm_dialog_close(ICBMDialog *pDialog)
+{
+    delete pDialog;
+    return false;
+}
+

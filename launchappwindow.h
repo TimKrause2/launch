@@ -3,6 +3,7 @@
 
 #include "launch.h"
 #include "ballistic_dialog.h"
+#include "icbm_dialog.h"
 #include <gtkmm.h>
 
 class LaunchAppWindow : public Gtk::ApplicationWindow
@@ -10,6 +11,7 @@ class LaunchAppWindow : public Gtk::ApplicationWindow
 private:
     LaunchData &ld;
     BallisticLaunchData bldata;
+    ICBMLaunchData icbm_data;
     double offset_x_last;
     double offset_y_last;
 public:
@@ -33,6 +35,9 @@ protected:
     void ballistic_dialog_show();
     void on_ballistic_dialog_response(const Glib::ustring& response, BallisticDialog* dialog);
     bool on_ballistic_dialog_close(BallisticDialog* dialog);
+    void icbm_dialog_show();
+    void on_icbm_dialog_response(const Glib::ustring& response, ICBMDialog* dialog);
+    bool on_icbm_dialog_close(ICBMDialog* dialog);
 };
 
 #endif

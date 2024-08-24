@@ -1202,24 +1202,18 @@ bool Satellite::OptimizeICBMLaunch(
     return true;
 }
 
-
-
-
-
-
-
 bool Satellite::ScheduleICBMLaunch(
         double lat_vehicle, double long_vehicle,
+        double hgt_vehicle,
         double lat_target, double long_target,
-        double T1, double T2,
-        double thrust)
+        double hgt_target)
 {
     if(!maneuverQueue.Empty()) return true;
 
     Eigen::Vector3d n_r_vehicle = n_r_earth_frame(lat_vehicle, long_vehicle);
     Eigen::Vector3d n_r_target = n_r_earth_frame(lat_target, long_target);
-    double mag_r_vehicle = m_radius + primary_body->m_radius;
-    double mag_r_target = primary_body->m_radius + m_radius;
+    double mag_r_vehicle = primary_body->m_radius + hgt_vehicle;
+    double mag_r_target = primary_body->m_radius + hgt_target;
     Eigen::Vector3d r_p_vehicle = n_r_vehicle*mag_r_vehicle;
     Eigen::Vector3d r_p_target = n_r_target*mag_r_target;
     Eigen::Matrix3d A = caams::Ap(primary_body->p);
@@ -1246,8 +1240,8 @@ bool Satellite::ScheduleICBMLaunch(
                     v_vehicle0,
                     r_aim,
                     h_apogee,
-                    T1,
-                    thrust,
+                    450, // T1
+                    THRUST,
                     controls,
                     time,
                     r_strike,
@@ -1281,7 +1275,7 @@ bool Satellite::ScheduleICBMLaunch(
 
     DirectedAcceleration3dManeuver *acc_maneuver =
             new DirectedAcceleration3dManeuver(
-                this, controls, time, thrust);
+                this, controls, time, THRUST);
     maneuverQueue.AddManeuver(acc_maneuver);
     double T_acc_maneuver = acc_maneuver->Duration();
 

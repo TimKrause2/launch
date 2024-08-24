@@ -84,5 +84,5 @@ void entry_set_font(Gtk::Widget &widget,
                     Glib::RefPtr<Gtk::CssProvider> provider)
 {
     widget.set_name("Entry");
-    widget.get_style_context()->add_provider(provider, 1);
+    widget.get_style_context()->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_USER);
 }

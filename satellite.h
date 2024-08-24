@@ -102,10 +102,9 @@ public:
 
     bool ScheduleICBMLaunch(
             double lat_vehicle, double long_vehicle,
+            double hgt_vehicle,
             double lat_target, double long_target,
-            double T1, double T2,
-            double thrust);
+            double hgt_target);
 };
-
 
 #endif
