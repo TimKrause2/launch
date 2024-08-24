@@ -1,4 +1,4 @@
-CPPFLAGS=-ggdb -pthread -I/usr/include/PSOPT `pkg-config\
+CPPFLAGS=-O2 -pthread -I/usr/include/PSOPT `pkg-config\
     --cflags freetype2 eigen3 ipopt gtkmm-4.0 epoxy` `sdl2-config --cflags`
 LDLIBS=-L/usr/lib/PSOPT -lPSOPT -lGLESv2 -ljpeg -ltiff\
     `pkg-config --libs freetype2 ipopt adolc gtkmm-4.0 epoxy` `sdl2-config --libs`
@@ -8,7 +8,8 @@ CC=g++
 COMMON_OBJS=gsim.o caams.o orbit.o image.o esfont.o shader.o uv_sphere.o esShader.o
 SATELLITE_OBJS=satellite.o maneuver.o event.o sequencer.o two_phase_2.o thrust_vector.o\
     delayed_launch.o spheroid.o ballistic2.o icbm_simple.o
-
+LAUNCH_OBJS=launchapp.o launchappwindow.o ballistic_dialog.o dialog_util.o\
+    icbm_dialog.o
 all:launch
 
 orbit_test:orbit_test.o orbit.o caams.o
@@ -17,7 +18,7 @@ orbit_test.o:orbit_test.cpp
 
 tracker:tracker.o $(COMMON_OBJS) tracker.o
 
-launch:launch.o $(COMMON_OBJS) $(SATELLITE_OBJS) launchapp.o launchappwindow.o ballistic_dialog.o dialog_util.o
+launch:launch.o $(COMMON_OBJS) $(SATELLITE_OBJS) $(LAUNCH_OBJS)
 
 lunar:lunar.o $(COMMON_OBJS) $(SATELLITE_OBJS) trajectory.o
 
@@ -91,6 +92,8 @@ launchappwindow.o:launchappwindow.cpp
 ballistic_dialog.o:ballistic_dialog.cpp
 
 dialog_util.o:dialog_util.cpp
+
+icbm_dialog.o:icbm_dialog.cpp
 
 clean:
 	rm *.o
