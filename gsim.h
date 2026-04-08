@@ -13,6 +13,7 @@
 
 // inserting into a list
 #include <list>
+#include <thread>
 
 #define G_gravity 6.67384e-11
 
@@ -65,6 +66,7 @@ public:
     Eigen::Vector3d m_rk_position;
     Eigen::Vector3d m_rk_velocity;
     Eigen::Vector3d m_rk_acceleration;
+    Eigen::Vector3d m_rk_force;
     Eigen::Vector3d ex_position0;
     Eigen::Vector3d ex_position1;
     Eigen::Vector3d ex_velocity0;
@@ -107,11 +109,24 @@ public:
     void update_rotation( double dt );
 };
 
+struct BodyPair
+{
+    Body *body1;
+    Body *body2;
+    BodyPair(Body* body1, Body* body2):
+        body1(body1), body2(body2) {}
+    void calculate_forces(void);
+};
+
 class System
 {
 private:
     std::list<Body*> m_bodies;
+    std::list<BodyPair> m_body_pairs;
+    int n_proc_threads;
+    std::list<std::thread> m_threads;
 public:
+    System(void);
 	void AddBody(Body* p_body);
     void rkIntegrate(double p_dt_total );
     void extrapolate(double t);
@@ -125,6 +140,8 @@ private:
     void rkPrepare(void);
     void rkUpdate(double dt);
     void rkAccelerations( double dt );
+    void rkForces( std::list<BodyPair>::iterator first_pair,
+                   std::list<BodyPair>::iterator last_pair);
     void ortho_p_dot(Eigen::Vector4d const &p, Eigen::Vector4d &pdot);
 	void rkPhase1Positions( void );
 	void rkPhase2Positions( double p_dt );

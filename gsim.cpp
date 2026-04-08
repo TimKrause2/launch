@@ -252,6 +252,23 @@ Eigen::Vector3d Body::rk_acceleration(
     return -r.normalized()*mag_a;
 }
 
+void BodyPair::calculate_forces(void)
+{
+    // vector from body1 to body2
+    Eigen::Vector3d r_21 = body2->m_rk_position - body1->m_rk_position;
+    double mag_r2 = r_21.squaredNorm();
+    double F = G_gravity*body1->m_mass*body2->m_mass/mag_r2;
+    Eigen::Vector3d F_12 = r_21/sqrt(mag_r2)*F;
+    body1->m_rk_force += F_12;
+    body2->m_rk_force -= F_12;
+}
+
+System::System(void)
+{
+    n_proc_threads = std::thread::hardware_concurrency();
+    m_threads.resize(n_proc_threads);
+}
+
 void System::AddBody(Body* p_body)
 {
 	m_bodies.push_back(p_body);
@@ -279,35 +296,80 @@ void System::rkAccelerations( double dt )
 {
     std::list<Body*>::iterator l_it_b1;
     std::list<Body*>::iterator l_it_b2;
+    int n_bodies=0;
 	// set all accelerations to zero
 	for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
         if(!(*l_it_b1)->Enabled()) continue;
         Eigen::Vector3d force;
         Eigen::Vector3d torque;
         (*l_it_b1)->ForceAndTorque(dt, force, torque);
-        (*l_it_b1)->m_rk_acceleration = force/(*l_it_b1)->m_mass;
+        (*l_it_b1)->m_rk_force = force;
         (*l_it_b1)->rk_pddot = p_ddot_solve(
                     (*l_it_b1)->rk_p,
                     (*l_it_b1)->rk_pdot,
                     (*l_it_b1)->Jp,
                     torque);
+        n_bodies++;
 	}
-	// calculate accelerations for all pairs of bodies
-	for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+
+    // clear the space for the pairs list
+    int n_pairs = n_bodies*(n_bodies-1)/2;
+    m_body_pairs.clear();
+
+    // create the body pair list
+    for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
         if(!(*l_it_b1)->Enabled()) continue;
         l_it_b2 = l_it_b1;
-		l_it_b2++;
+        l_it_b2++;
         for( ; l_it_b2!=m_bodies.end(); l_it_b2++){
             if(!(*l_it_b2)->Enabled()) continue;
+            m_body_pairs.emplace_back(*l_it_b1, *l_it_b2);
+        }
+    }
 
-            (*l_it_b1)->m_rk_acceleration += (*l_it_b2)->rk_acceleration(
-                        (*l_it_b1)->m_rk_position,
-                        (*l_it_b1)->m_rk_velocity);
-            (*l_it_b2)->m_rk_acceleration += (*l_it_b1)->rk_acceleration(
-                        (*l_it_b2)->m_rk_position,
-                        (*l_it_b2)->m_rk_velocity);
-		}
+    // execute the pair list
+    std::list<BodyPair>::iterator bp_it1;
+    std::list<BodyPair>::iterator bp_it2;
+    if(n_pairs<n_proc_threads){
+        bp_it1 = m_body_pairs.begin();
+        bp_it2 = bp_it1;
+        for(int i=0;i<n_pairs;i++)
+            bp_it2++;
+        rkForces(bp_it1, bp_it2);
+    }else{
+        std::list<std::thread>::iterator th_it;
+        th_it = m_threads.begin();
+        bp_it1 = m_body_pairs.begin();
+        int i_bp_last = 0;
+        for(int i=0;i<n_proc_threads;i++,th_it++){
+            int i_bp_next = (i+1)*n_pairs/n_proc_threads;
+            int n = i_bp_next - i_bp_last;
+            bp_it2 = bp_it1;
+            for(int j=0;j<n;j++)
+                bp_it2++;
+            *th_it = std::thread(&System::rkForces, this, bp_it1, bp_it2);
+            bp_it1 = bp_it2;
+            i_bp_last = i_bp_next;
+        }
+        th_it = m_threads.begin();
+        for(int i=0;i<n_proc_threads;i++, th_it++)
+            (*th_it).join();
+    }
+
+
+    // calculate accelerations from the forces
+	for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+        (*l_it_b1)->m_rk_acceleration = (*l_it_b1)->m_rk_force/(*l_it_b1)->m_mass;
 	}
+}
+
+void System::rkForces( std::list<BodyPair>::iterator first_pair,
+               std::list<BodyPair>::iterator last_pair)
+{
+    std::list<BodyPair>::iterator it;
+    for(it = first_pair; it != last_pair; it++){
+        (*it).calculate_forces();
+    }
 }
 
 void System::ortho_p_dot(Eigen::Vector4d const &p, Eigen::Vector4d &pdot)
