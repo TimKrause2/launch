@@ -11,9 +11,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <thread>
+#include <memory>
 #include <iostream>
-#include "font.h"
+#include "esfont.h"
 #include "orbit.h"
+#include "orbit_draw.h"
 #include "gsim.h"
 #include "trajectory.h"
 #include "uv_sphere.h"
@@ -33,7 +35,7 @@ bool right_key=false;
 int last_x;
 int last_y;
 int modifiers;
-Font font;
+FreeTypeFont font;
 
 #define N_POINTS 3000
 #define FONT_SIZE 16
@@ -50,7 +52,7 @@ double mass_moon = 7.3477e22;
 double radius_moon = 1.7371e6;
 double mass_vehicle = 1e3;
 double radius_vehicle = 10.0;
-double h_vehicle = 500e3;
+double h_vehicle = 6500e3;
 double T_earth_moon = 27.321662*24*60*60;
 double alpha_apogee = 0.975;
 
@@ -66,9 +68,9 @@ Satellite* body_vehicle;
 
 System sim_system;
 
-Trajectory trajectory_vehicle(N_POINTS);
-Trajectory trajectory_moon(N_POINTS);
-Trajectory trajectory_earth(N_POINTS);
+std::unique_ptr<Trajectory> trajectory_vehicle;
+std::unique_ptr<Trajectory> trajectory_moon;
+std::unique_ptr<Trajectory> trajectory_earth;
 
 #define N_NODES_GUESS 10
 
@@ -161,10 +163,10 @@ double gravity_factor(void){
 
 void integrate_trajectory(double dt)
 {
-    for(int i_thread=0;i_thread<N_POINTS;i_thread++){
-        trajectory_vehicle.SetPoint(i_thread, body_vehicle);
-        trajectory_moon.SetPoint(i_thread, body_moon);
-        trajectory_earth.SetPoint(i_thread, body_earth);
+    for(i_thread=0;i_thread<N_POINTS;i_thread++){
+        trajectory_vehicle->SetPoint(i_thread, body_vehicle);
+        trajectory_moon->SetPoint(i_thread, body_moon);
+        trajectory_earth->SetPoint(i_thread, body_earth);
         sim_system.rkIntegrate(dt);
     }
     thread_finished=true;
@@ -596,6 +598,17 @@ void insert_trajectory(double dt)
 
 }
 
+void trajectories_draw(glm::mat4 mvp, int n_points)
+{
+    glm::vec4 trajectory_vehicle_color(0.5f, 0.5f, 1.0f, 1.0f);
+    glm::vec4 trajectory_moon_color(1.0f, 1.0f, 0.5f, 1.0f);
+    glm::vec4 trajectory_earth_color(0.5f, 1.0f, 1.0f, 1.0f);
+
+    trajectory_vehicle->Draw(mvp, trajectory_vehicle_color, n_points);
+    trajectory_moon->Draw(mvp, trajectory_moon_color, n_points);
+    trajectory_earth->Draw(mvp, trajectory_earth_color, n_points);
+}
+
 void display(void)
 {
     // calculate the radius of the scene
@@ -637,14 +650,13 @@ void display(void)
 
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixf( glm::value_ptr(A_pers) );
-
-    glMatrixMode(GL_MODELVIEW);
     glm::dmat4 A_cam_inv = glm::inverse(A_cam);
-    glLoadMatrixd( glm::value_ptr(A_cam_inv) );
     glm::mat4 view(A_cam_inv);
-    orbit_draw(param0,mass_earth,mass_moon);
+    glm::mat4 mvp = A_pers*view;
+
+    orbit_draw(mvp,
+               body_earth, glm::vec4(0.1f, 0.1f, 0.95f, 1.0f),
+               body_moon, glm::vec4(0.5f, 0.5f, 0.5f, 1.0f));
 
     double dt;
     switch(dstate){
@@ -664,63 +676,34 @@ void display(void)
 
     case DS_CALCULATING:
         // draw the progress of the trajectory
-        glColor3f(0.5f,0.5f,1.0f);
-        trajectory_vehicle.Draw(i_thread);
-        glColor3f(1.0f,1.0f,0.5f);
-        trajectory_moon.Draw(i_thread);
-        glColor3f(0.5f,1.0f,1.0f);
-        trajectory_earth.Draw(i_thread);
+        trajectories_draw(mvp, i_thread);
         if(thread_finished){
             trajectory_thread.join();
             dstate = DS_DISPLAY_ALL;
         }
         break;
     case DS_DISPLAY_ALL:
-        glColor3f(0.5f,0.5f,1.0f);
-        trajectory_vehicle.Draw(N_POINTS);
-        glColor3f(1.0f,1.0f,0.5f);
-        trajectory_moon.Draw(N_POINTS);
-        glColor3f(0.5f,1.0f,1.0f);
-        trajectory_earth.Draw(N_POINTS);
+        trajectories_draw(mvp, N_POINTS);
         sim_system.draw(A_pers, view);
         break;
 
     case DS_ANIMATE:
-        glColor3f(0.5f,0.5f,1.0f);
-        trajectory_vehicle.Draw(i_animate);
-        trajectory_vehicle.GetPoint(i_animate, body_vehicle);
-        glColor3f(1.0f,1.0f,0.5f);
-        trajectory_moon.Draw(i_animate);
-        trajectory_moon.GetPoint(i_animate, body_moon);
-        glColor3f(0.5f,1.0f,1.0f);
-        trajectory_earth.Draw(i_animate);
-        trajectory_earth.GetPoint(i_animate, body_earth);
+        trajectories_draw(mvp, i_animate);
+        trajectory_vehicle->GetPoint(i_animate, body_vehicle);
+        trajectory_moon->GetPoint(i_animate, body_moon);
+        trajectory_earth->GetPoint(i_animate, body_earth);
         sim_system.draw(A_pers, view);
         i_animate++;
         i_animate%=N_POINTS;
         break;
     case DS_ANIMATE_PAUSE:
-        glColor3f(0.5f,0.5f,1.0f);
-        trajectory_vehicle.Draw(i_animate);
-        trajectory_vehicle.GetPoint(i_animate, body_vehicle);
-        glColor3f(1.0f,1.0f,0.5f);
-        trajectory_moon.Draw(i_animate);
-        trajectory_moon.GetPoint(i_animate, body_moon);
-        glColor3f(0.5f,1.0f,1.0f);
-        trajectory_earth.Draw(i_animate);
-        trajectory_earth.GetPoint(i_animate, body_earth);
+        trajectories_draw(mvp, i_animate);
+        trajectory_vehicle->GetPoint(i_animate, body_vehicle);
+        trajectory_moon->GetPoint(i_animate, body_moon);
+        trajectory_earth->GetPoint(i_animate, body_earth);
         sim_system.draw(A_pers, view);
         break;
     }
-
-    glColor3f(1.0f,1.0f,1.0f);
-    // print some stuff
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho( 0.0, (GLdouble)window_width,
-            (GLdouble)window_height, 0.0, -1.0, 1.0 );
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
 
     double x=FONT_SIZE;
     double y=FONT_SIZE;
@@ -807,22 +790,24 @@ void init_system(void)
                 body_earth,
                 rp_vehicle);
 
-    sim_system.AddBody(body_earth);
     sim_system.AddBody(body_moon);
+    sim_system.AddBody(body_earth);
     sim_system.AddBody(body_vehicle);
 
     glClearColor(0.0,0.0,0.0,0.0);
-    glDrawBuffer(GL_BACK);
+
+    glm::vec4 fontColor(0.0f,0.0f,0.0f,1.0f);
+    glm::vec4 outlineColor(1.0f,1.0f,1.0f,1.0f);
 
     font.LoadOutline(
                 "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
-                FONT_SIZE,Pixel32(0, 0, 0),Pixel32(255, 255, 255), 1.0 );
+                FONT_SIZE,fontColor,outlineColor, 1.0 );
 
     uv_sphere_init(64,128);
-
-
-    OrbitalParams c0;
-
+    orbit_draw_init();
+    trajectory_vehicle = std::make_unique<Trajectory>(N_POINTS);
+    trajectory_earth = std::make_unique<Trajectory>(N_POINTS);
+    trajectory_moon = std::make_unique<Trajectory>(N_POINTS);
 }
 
 
@@ -952,7 +937,7 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 24 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
 
@@ -964,12 +949,6 @@ int main(int argc, char **argv)
         SDL_Quit();
         return 1;
     }
-
-    // GLenum err = glewInit();
-    // if(err!=GLEW_OK){
-    //     printf("glewInit error:%s\n",glewGetErrorString(err));
-    //     return -1;
-    // }
 
     SDL_ShowWindow(window);
 

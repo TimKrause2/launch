@@ -1,11 +1,11 @@
-CPPFLAGS=-O2 -pthread -I/usr/include/PSOPT `pkg-config\
+CPPFLAGS=-O3 -pthread -I/usr/include/PSOPT `pkg-config\
     --cflags freetype2 eigen3 ipopt gtkmm-4.0 epoxy` `sdl2-config --cflags`
 LDLIBS=-L/usr/lib/PSOPT -lPSOPT -lGLESv2 -ljpeg -ltiff\
     `pkg-config --libs freetype2 ipopt adolc gtkmm-4.0 epoxy` `sdl2-config --libs`
 LDFLAGS=-ggdb -pthread
 CC=g++
 
-COMMON_OBJS=gsim.o caams.o orbit.o image.o esfont.o shader.o uv_sphere.o esShader.o
+COMMON_OBJS=gsim.o caams.o orbit.o orbit_draw.o image.o esfont.o shader.o uv_sphere.o esShader.o
 SATELLITE_OBJS=satellite.o maneuver.o event.o sequencer.o two_phase_2.o thrust_vector.o\
     delayed_launch.o spheroid.o ballistic2.o icbm_simple.o
 LAUNCH_OBJS=launchapp.o launchappwindow.o ballistic_dialog.o dialog_util.o\
@@ -32,6 +32,8 @@ gsim.o:gsim.cpp
 caams.o:caams.cpp
 
 orbit.o:orbit.cpp
+
+orbit_draw.o:orbit_draw.cpp
 
 image.o:image.c
 

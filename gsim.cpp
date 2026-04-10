@@ -235,11 +235,13 @@ double Body::CurvatureTimeStep()
     Eigen::Vector3d v_x_a = m_velocity.cross(m_rk_acceleration);
     double mag_v2 = m_velocity.squaredNorm();
     double omega = v_x_a.norm()/mag_v2;
+    double dt;
     if(omega==0.0){
-        return 1e9;
+        dt = 1e9;
     }else{
-        return 2*M_PI/1024/omega;
+        dt = 2*M_PI/1024/omega;
     }
+    return dt;
 }
 
 Eigen::Vector3d Body::rk_acceleration(
