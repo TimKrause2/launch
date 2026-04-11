@@ -604,8 +604,8 @@ void trajectories_draw(glm::mat4 mvp, int n_points)
     glm::vec4 trajectory_moon_color(1.0f, 1.0f, 0.5f, 1.0f);
     glm::vec4 trajectory_earth_color(0.5f, 1.0f, 1.0f, 1.0f);
 
-    trajectory_vehicle->Draw(mvp, trajectory_vehicle_color, n_points);
     trajectory_moon->Draw(mvp, trajectory_moon_color, n_points);
+    trajectory_vehicle->Draw(mvp, trajectory_vehicle_color, n_points);
     trajectory_earth->Draw(mvp, trajectory_earth_color, n_points);
 }
 

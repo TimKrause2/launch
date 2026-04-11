@@ -13,8 +13,8 @@ class Trajectory{
     GLuint vbuff;
     static GLuint program;
     static int n_objects;
-    GLuint mvp_id;
-    GLuint color_id;
+    static GLint mvp_id;
+    static GLint color_id;
     void LoadProgram(void);
     void UnLoadProgram(void);
 public:

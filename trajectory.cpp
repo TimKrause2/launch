@@ -5,6 +5,8 @@
 
 GLuint Trajectory::program = 0;
 int Trajectory::n_objects = 0;
+GLint Trajectory::mvp_id = -1;
+GLint Trajectory::color_id = -1;
 
 Trajectory::Trajectory(int Npoints) :
     Npoints(Npoints),
@@ -73,7 +75,7 @@ void Trajectory::GetPoint(int i, Body *body){
     body->m_velocity = velocities.col(i);
 }
 
-void Trajectory::Draw(glm::mat4 mvp, glm::vec4 color, int N)
+void Trajectory::Draw(glm::mat4 mvp, glm::vec4 c, int N)
 {
     if(N<2) return;
 
@@ -92,7 +94,7 @@ void Trajectory::Draw(glm::mat4 mvp, glm::vec4 color, int N)
     glUseProgram(program);
     glBindVertexArray(vao);
     glUniformMatrix4fv(mvp_id, 1, GL_FALSE, glm::value_ptr(mvp));
-    glUniform4fv(color_id, 1, glm::value_ptr(color));
+    glUniform4fv(color_id, 1, glm::value_ptr(c));
 
     glDrawArrays(GL_LINE_STRIP, 0, N);
 
