@@ -5,8 +5,11 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "gsim.h"
-#include "image.h"
 #include "uv_sphere.h"
+
+glTexture *Body::cursor_tex;
+int Body::n_bodies = 0;
+
 Body::Body(Body &b)
     :
       Body(b.m_mass,
@@ -36,32 +39,31 @@ Body::Body(double mass,
     Jp(Jp),
     enabled(true)
 {
-    if(!tex_file || tex_file[0]==0){
-        texName = 0;
-        return;
+    texture = texture_load(tex_file);
+    InitializeCursor();
+}
+
+Body::~Body(void)
+{
+    DeleteCursor();
+}
+
+void Body::InitializeCursor(void)
+{
+    if(!n_bodies){
+        cursor_tex = rgba_texture_load("cursor.tiff");
     }
+    n_bodies++;
+}
 
-    // load the texture for the body
-    image* tex_image = image_load(tex_file);
-    if(!tex_image){
-        printf("couldn't load texture file:\"%s\"",tex_file);
-        return;
+void Body::DeleteCursor(void)
+{
+    if(n_bodies){
+        n_bodies--;
+        if(!n_bodies){
+            texture_free(cursor_tex);
+        }
     }
-
-    glGenTextures(1, &texName);
-    glBindTexture(GL_TEXTURE_2D, texName);
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-
-    glTexImage2D(
-                GL_TEXTURE_2D, 0, GL_RGB8,
-                tex_image->width, tex_image->height,
-                0,
-                GL_RGB, GL_UNSIGNED_BYTE,
-                (const GLvoid*)tex_image->data );
-    image_free(tex_image);
 }
 
 void Body::PushState(void)
@@ -99,16 +101,36 @@ void Body::Disable(void)
 
 void Body::draw(glm::mat4 proj, glm::mat4 view)
 {
-    // first set up the transformation matrix
-    //glMatrixMode(GL_MODELVIEW);
-    //glPushMatrix();
+    GLint vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+    int width = vp[2];
+    int height = vp[3];
+
+    // determine pixel size of diameter
+    glm::vec4 rp(m_position(0), m_position(1), m_position(2), 1.0f);
+    glm::vec4 rp_cam = view*rp;
+    if(rp_cam.z>=0.0f) return;
+    glm::vec4 rp_test(m_radius*2, 0.0f, rp_cam.z, 1.0f);
+    glm::vec4 rp_pers = proj*rp_test;
+    float pixels = (float)width/2.0f*rp_pers.x/rp_pers.w;
+
+    if(pixels<4.0f){
+        // plot the cursor
+        // find the pixel location of the body
+        rp_pers = proj*rp_cam;
+        float p_x = rp_pers.x / rp_pers.w;
+        if(p_x<-1.0f || p_x>1.0f) return;
+        float p_y = rp_pers.y / rp_pers.w;
+        if(p_y<-1.0f || p_y>1.0f) return;
+        float xc = (float)width*(p_x+1.0f)/2.0f;
+        float yc = (float)height*(p_y+1.0f)/2.0f;
+        texture_sprite(cursor_tex, xc, yc, 0.4f);
+    }
 
     glm::vec3 scale((float)m_radius,(float)m_radius,(float)m_radius);
     glm::mat4 A_scale = glm::scale(glm::mat4(1.0),scale);
 
-    //caams::matrix A(caams::Ap(p));
     Eigen::Matrix3d A = caams::Ap(p);
-    //glm::dmat3 A_rot_dbl = glm::make_mat3((~A).data);
     glm::dmat3 A_rot_dbl = E2GLM(A);
     glm::mat3 A_rot_flt(A_rot_dbl);
     glm::mat4 A_rotation(A_rot_flt);
@@ -127,22 +149,10 @@ void Body::draw(glm::mat4 proj, glm::mat4 view)
     glEnable(GL_CULL_FACE);
     glFrontFace(GL_CCW);
     glEnable(GL_DEPTH_TEST);
-    uv_sphere_draw(mvp, texName);
+    uv_sphere_draw(mvp, texture->tex_id);
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
 
-    // set up texturing
-//    glEnable( GL_TEXTURE_2D );
-//    glEnable(GL_DEPTH_TEST);
-//    glEnable( GL_CULL_FACE );
-//    glFrontFace( GL_CW );
-//    glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL );
-//    glBindTexture( GL_TEXTURE_2D, texName );
-//    uv_sphere( SPHERE_N_LATITUDE, SPHERE_N_LONGITUDE );
-//    glDisable( GL_TEXTURE_2D );
-//    glDisable( GL_DEPTH_TEST );
-
-//    glPopMatrix();
 }
 
 

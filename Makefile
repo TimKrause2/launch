@@ -1,3 +1,4 @@
+CFLAGS=-O3
 CPPFLAGS=-O3 -pthread -I/usr/include/PSOPT `pkg-config\
     --cflags freetype2 eigen3 ipopt gtkmm-4.0 epoxy` `sdl2-config --cflags`
 LDLIBS=-L/usr/lib/PSOPT -lPSOPT -lGLESv2 -ljpeg -ltiff\

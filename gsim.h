@@ -2,6 +2,7 @@
 #define GSIM_H
 
 #include "caams.hpp"
+#include "image.h"
 //#define GL_GLEXT_PROTOTYPES 1
 //#include <GL/gl.h>
 //#include <GL/glext.h>
@@ -42,7 +43,7 @@ struct State
 class Body
 {
 private:
-    GLuint texName;
+    glTexture *texture;
     std::list<State> states;
     Body operator=(State const &state){
         m_position = state.m_position;
@@ -52,6 +53,11 @@ private:
         return *this;
     }
     bool enabled;
+    // cursor
+    static glTexture *cursor_tex;
+    static int n_bodies;
+    void InitializeCursor(void);
+    void DeleteCursor(void);
 public:
 	double m_mass;
     double m_radius;
@@ -84,7 +90,7 @@ public:
          Eigen::Vector4d &pdot,
          Eigen::Matrix3d &Jp,
          char* tex_image);
-
+    ~Body(void);
     void PushState(void);
     void PopState(void);
     void RestoreState(void);

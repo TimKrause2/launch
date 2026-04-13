@@ -21,6 +21,7 @@
 #include "uv_sphere.h"
 #include "event.h"
 #include "satellite.h"
+#include "image.h"
 
 using namespace PSOPT;
 
@@ -805,6 +806,7 @@ void init_system(void)
 
     uv_sphere_init(64,128);
     orbit_draw_init();
+    image_init();
     trajectory_vehicle = std::make_unique<Trajectory>(N_POINTS);
     trajectory_earth = std::make_unique<Trajectory>(N_POINTS);
     trajectory_moon = std::make_unique<Trajectory>(N_POINTS);
