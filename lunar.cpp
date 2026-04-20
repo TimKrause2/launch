@@ -345,6 +345,19 @@ void linkages( adouble* linkages, adouble* xad, Workspace* workspace)
 
 }
 
+
+template <typename Vec>
+Eigen::MatrixXd interpolate(Vec v1, Vec v2, int N)
+{
+    int n_rows = v1.rows();
+    Eigen::MatrixXd r(n_rows, N);
+    for(int i=0;i<N;i++){
+        double alpha = (double)i/(N-1);
+        r.col(i) = (1-alpha)*v1 + alpha*v2;
+    }
+    return r;
+}
+
 void insert_trajectory(double dt)
 {
     // push the state of the system
@@ -520,19 +533,19 @@ void insert_trajectory(double dt)
     nstates = problem.phases(1).nstates;
     iphase = 1;
 
-    xini = meparams0_vec;
+    //xini = meparams0_vec;
 
-    rk4_propagate( dae, guess_control, guess_time, xini, param_guess, problem, iphase, x_guess, NULL);
+    //rk4_propagate( dae, guess_control, guess_time, xini, param_guess, problem, iphase, x_guess, NULL);
 
-    xfinal = x_guess.col(x_guess.cols()-1);
+    //xfinal = x_guess.col(x_guess.cols()-1);
 
-    ModEquOrbitalParams meparams_pro;
-    meparams_pro.FromVector(xfinal);
-    OrbitalParams oparams_pro;
-    meparams_pro.ToOrbitalParams(oparams_pro);
+    //ModEquOrbitalParams meparams_pro;
+    //meparams_pro.FromVector(xfinal);
+    //OrbitalParams oparams_pro;
+    //meparams_pro.ToOrbitalParams(oparams_pro);
 
 
-
+    x_guess = interpolate(meparams0_vec, meparams1_vec, nnodes);
 
 
     problem.phases(1).guess.states   = x_guess;

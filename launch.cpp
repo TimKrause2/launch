@@ -267,6 +267,7 @@ void LaunchData::init(void)
                 FONT_SIZE,fontcolor,outlinecolor, 1.0 );
 
     uv_sphere_init(320,640);
+    image_init();
 }
 
 void LaunchData::update_view_direction(int dx, int dy)

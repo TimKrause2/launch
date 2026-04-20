@@ -39,7 +39,11 @@ Body::Body(double mass,
     Jp(Jp),
     enabled(true)
 {
-    texture = texture_load(tex_file);
+    if(tex_file){
+        texture = texture_load(tex_file);
+    }else{
+        texture = NULL;
+    }
     InitializeCursor();
 }
 
@@ -114,7 +118,7 @@ void Body::draw(glm::mat4 proj, glm::mat4 view)
     glm::vec4 rp_pers = proj*rp_test;
     float pixels = (float)width/2.0f*rp_pers.x/rp_pers.w;
 
-    if(pixels<4.0f){
+    if(pixels<4.0f || !texture){
         // plot the cursor
         // find the pixel location of the body
         rp_pers = proj*rp_cam;
@@ -127,6 +131,8 @@ void Body::draw(glm::mat4 proj, glm::mat4 view)
         texture_sprite(cursor_tex, xc, yc, 0.4f);
     }
 
+    if(!texture)
+        return;
     glm::vec3 scale((float)m_radius,(float)m_radius,(float)m_radius);
     glm::mat4 A_scale = glm::scale(glm::mat4(1.0),scale);
 

@@ -1,7 +1,5 @@
-#define GL_GLEXT_PROTOTYPES 1
-#include <GL/gl.h>
-#include <GL/glext.h>
-//#include <GL/glew.h>
+#include <GLES3/gl32.h>
+#include <GLES3/gl3ext.h>
 #include "SDL.h"
 #include <stdio.h>
 #include <math.h>
@@ -9,8 +7,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "font.h"
+#include "esfont.h"
 #include "orbit.h"
+#include "orbit_draw.h"
 #include "gsim.h"
 #include "uv_sphere.h"
 
@@ -22,7 +21,7 @@ bool right_key=false;
 int last_x;
 int last_y;
 int modifiers;
-Font font;
+FreeTypeFont font;
 
 #define RAD_PER_DEG (M_PI/180.0)
 #define PLANET_SCALE 10.0
@@ -36,7 +35,7 @@ double view_lat=0.0;
 double view_long=0.0;
 double mass_earth = 5.97219e24;
 double radius_earth = 6.371e6*PLANET_SCALE;
-double mass_moon = 7.3477e22;
+double mass_moon = mass_earth;//7.3477e22;
 double radius_moon = 1.7371e6*PLANET_SCALE;
 double T_earth_moon = (28*24*60*60);
 
@@ -104,15 +103,16 @@ void display(void)
 
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixf( glm::value_ptr(A_pers) );
-
-    glMatrixMode(GL_MODELVIEW);
     glm::dmat4 A_cam_inv = glm::inverse(A_cam);
-    glLoadMatrixd( glm::value_ptr(A_cam_inv) );
     glm::mat4 view(A_cam_inv);
 
-    orbit_draw(params0,mass_earth,mass_moon);
+    glm::mat4 mvp = A_pers*view;
+
+    glEnable(GL_DEPTH_TEST);
+    orbit_draw(mvp,
+               body_earth, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f),
+               body_moon, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+    glDisable(GL_DEPTH_TEST);
 
     if(edit_mode!=EDIT_MODE_ANIMATE){
         orbit_initialize(params0,
@@ -143,48 +143,48 @@ void display(void)
     orbital_elements(r, v, mass_earth, mass_moon, params_rv);
 
     double x=FONT_SIZE;
-    double y=FONT_SIZE;
+    double y=window_height - FONT_SIZE;
 
     font.Printf(x,y,"a:%le a1:%le",params0.a,params1.a);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"e:%le e1:%le",params0.e,params1.e);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"i:% 7.2lf i1:% 7.2lf",params0.i/RAD_PER_DEG,params1.i/RAD_PER_DEG);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"O:% 7.2lf O1:% 7.2lf",params0.Omega/RAD_PER_DEG,params1.Omega/RAD_PER_DEG);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"o:% 7.2lf o1:% 7.2lf",params0.omega/RAD_PER_DEG,params1.omega/RAD_PER_DEG);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"n:% 7.2lf n1:% 7.2lf",params0.nu/RAD_PER_DEG,params1.nu/RAD_PER_DEG);
 
-    y+=2*FONT_SIZE;
+    y-=2*FONT_SIZE;
     font.Printf(x,y,"a_rv:%le", params_rv.a);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"e_rv:%le", params_rv.e);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"i_rv:% 7.2lf", params_rv.i/RAD_PER_DEG);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"O_rv:% 7.2lf", params_rv.Omega/RAD_PER_DEG);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"o_rv:% 7.2lf", params_rv.omega/RAD_PER_DEG);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"n_rv:% 7.2lf", params_rv.nu/RAD_PER_DEG);
 
 
 
     x = window_width/2;
-    y = FONT_SIZE;
+    y = window_height - FONT_SIZE;
 
     font.Printf(x,y,"p:%le",eq.p);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"f:%le",eq.f);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"g:%le",eq.g);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"h:%le",eq.h);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"k:%le",eq.k);
-    y+=FONT_SIZE;
+    y-=FONT_SIZE;
     font.Printf(x,y,"L:% 7.2lf",eq.L/RAD_PER_DEG);
 
 
@@ -250,13 +250,17 @@ void init_program(void)
     earth_moon_system.AddBody(body_moon);
 
     glClearColor(0.0,0.0,0.0,0.0);
-    glDrawBuffer(GL_BACK);
 
     uv_sphere_init(64,128);
+    orbit_draw_init();
+
+    glm::vec4 font_color(0.2f, 0.2f, 0.2f, 1.0f);
+    glm::vec4 outl_color(1.0f, 1.0f, 1.0f, 1.0f);
+
 
     font.LoadOutline(
         "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
-        FONT_SIZE,Pixel32(0, 0, 0),Pixel32(255, 255, 255), 1.0 );
+        FONT_SIZE,font_color, outl_color, 1.0 );
 }
 
 void keydown(SDL_Event *event)
@@ -431,7 +435,7 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 24 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
 

@@ -82,9 +82,9 @@ void orbit_draw(glm::mat4 mvp,
     glm::mat4 Mscale_s = glm::scale(scale_s);
 
     // initialize the translation matricis
-    glm::vec3 t_cp(cp, 0.0f, 0.0f);
+    glm::vec3 t_cp(-cp, 0.0f, 0.0f);
     glm::mat4 Mt_cp = glm::translate(t_cp);
-    glm::vec3 t_cs(-cs, 0.0f, 0.0f);
+    glm::vec3 t_cs(cs, 0.0f, 0.0f);
     glm::mat4 Mt_cs = glm::translate(t_cs);
     glm::vec3 t_bc(bc(0), bc(1), bc(2));
     glm::mat4 Mt_bc = glm::translate(t_bc);
