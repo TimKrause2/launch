@@ -1,5 +1,5 @@
-CFLAGS=-O3
-CPPFLAGS=-O3 -pthread -I/usr/include/PSOPT `pkg-config\
+CFLAGS=-ggdb -O3
+CPPFLAGS=-ggdb -pthread -I/usr/include/PSOPT `pkg-config\
     --cflags freetype2 eigen3 ipopt gtkmm-4.0 epoxy` `sdl2-config --cflags`
 LDLIBS=-L/usr/lib/PSOPT -lPSOPT -lGLESv2 -ljpeg -ltiff\
     `pkg-config --libs freetype2 ipopt adolc gtkmm-4.0 epoxy` `sdl2-config --libs`
@@ -97,6 +97,10 @@ ballistic_dialog.o:ballistic_dialog.cpp
 dialog_util.o:dialog_util.cpp
 
 icbm_dialog.o:icbm_dialog.cpp
+
+planet_rot_test.o:planet_rot_test.cpp
+
+planet_rot_test: planet_rot_test.o $(COMMON_OBJS)
 
 clean:
 	rm *.o

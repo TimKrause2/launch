@@ -143,6 +143,18 @@ namespace caams
         return omega_p;
     }
 
+    Eigen::Vector4d p_ddot_omega_dot(Eigen::Vector4d const & p, Eigen::Vector3d const & omega_dot, Eigen::Vector3d const & omega)
+    {
+        double w2 = omega.squaredNorm();
+        return 0.5*G(p).transpose()*omega_dot - 0.25*w2*p;
+    }
+
+    Eigen::Vector4d p_ddot_omega_p_dot(Eigen::Vector4d const & p, Eigen::Vector3d const & omega_p_dot, Eigen::Vector3d const & omega_p)
+    {
+        double w2 = omega_p.squaredNorm();
+        return 0.5*L(p).transpose()*omega_p_dot - 0.25*w2*p;
+    }
+
     Eigen::Matrix4d a_plus(Eigen::Vector3d const & a){
 		Eigen::Matrix4d r;
 		r <<

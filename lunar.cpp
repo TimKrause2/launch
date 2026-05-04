@@ -118,6 +118,11 @@ double initialize_system(void){
                 body_earth->m_velocity,
                 body_moon->m_velocity);
 
+    std::cout << "Earth norm(v):" << body_earth->m_velocity.norm()
+              << std::endl;
+    std::cout << "Moon norm(v):" << body_moon->m_velocity.norm()
+              << std::endl;
+
     // initialize the vehicle position and velocity
     double r_perigee = radius_earth+h_vehicle;
     Eigen::Vector3d r_vehicle;

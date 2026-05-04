@@ -123,9 +123,9 @@ void Body::draw(glm::mat4 proj, glm::mat4 view)
         // find the pixel location of the body
         rp_pers = proj*rp_cam;
         float p_x = rp_pers.x / rp_pers.w;
-        if(p_x<-1.0f || p_x>1.0f) return;
+        if((p_x<-1.0f) || (p_x>1.0f)) return;
         float p_y = rp_pers.y / rp_pers.w;
-        if(p_y<-1.0f || p_y>1.0f) return;
+        if((p_y<-1.0f) || (p_y>1.0f)) return;
         float xc = (float)width*(p_x+1.0f)/2.0f;
         float yc = (float)height*(p_y+1.0f)/2.0f;
         texture_sprite(cursor_tex, xc, yc, 0.4f);

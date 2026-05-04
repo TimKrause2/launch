@@ -24,6 +24,8 @@ namespace caams
     Eigen::Vector4d p_dot_omega_p(Eigen::Vector4d const & p, Eigen::Vector3d const & omega_p);
     Eigen::Vector3d omega_p_dot(Eigen::Vector4d const & p, Eigen::Vector4d const & p_dot);
     Eigen::Vector3d omega_p_p_dot(Eigen::Vector4d const & p, Eigen::Vector4d const & p_dot);
+    Eigen::Vector4d p_ddot_omega_dot(Eigen::Vector4d const & p, Eigen::Vector3d const & omega_dot, Eigen::Vector3d const & omega);
+    Eigen::Vector4d p_ddot_omega_p_dot(Eigen::Vector4d const & p, Eigen::Vector3d const & omega_p_dot, Eigen::Vector3d const & omega_p);
 
     // some inertial tensor functions
 	Eigen::Matrix3d J_p_cylinder_x_axis(double m, double r, double l);
