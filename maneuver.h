@@ -19,6 +19,7 @@ public:
     double Duration(void);
     virtual void ForceAndTorque(
             double dt,
+            const Eigen::VectorXd &y,
             Eigen::Vector3d &force,   // force in global coordinate space
             Eigen::Vector3d &torque)=0;
 };
@@ -29,9 +30,10 @@ public:
     CoastManeuver(double T_duration);
     ~CoastManeuver();
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque);
 };
 
 class LaunchManeuver : public Maneuver
@@ -48,9 +50,10 @@ public:
             double heading);
     ~LaunchManeuver();
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque);
     Eigen::Vector3d get_h_norm(void);
 };
 
@@ -63,9 +66,10 @@ public:
             double T_duration);
     ~ConstantAccelerationManeuver();
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque);
 };
 
 class DirectedAccelerationManeuver : public Maneuver
@@ -81,9 +85,10 @@ public:
         double thrust);
     ~DirectedAccelerationManeuver(){}
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque);
 };
 
 class DirectedAcceleration3dManeuver : public Maneuver
@@ -99,9 +104,10 @@ public:
         double thrust);
     ~DirectedAcceleration3dManeuver(){}
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque);
 };
 
 class ThrustVectorManeuver : public Maneuver
@@ -119,9 +125,10 @@ public:
         Eigen::Vector3d rp);
     ~ThrustVectorManeuver(){}
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque);
 };
 
 class SurfaceManeuver : public Maneuver
@@ -138,9 +145,10 @@ public:
     ~SurfaceManeuver(){}
     void Update(double dt);
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque);
 };
 
 class ElevatorManeuver : public Maneuver
@@ -154,9 +162,10 @@ public:
             double T_duration);
     ~ElevatorManeuver(){}
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque);
 };
 
 enum ReentryTestState
@@ -183,6 +192,7 @@ public:
     void Update(double dt);
     void ForceAndTorque(
             double dt,
+            const Eigen::VectorXd &y,
             Eigen::Vector3d &force,   // force in global coordinate space
             Eigen::Vector3d &torque);
 };

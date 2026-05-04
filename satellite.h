@@ -32,9 +32,10 @@ public:
     void Prepare(void);
     void Update(double dt);
     void ForceAndTorque(
-                double dt,
-                Eigen::Vector3d &force,   // force in global coordinate space
-                Eigen::Vector3d &torque);
+            double dt,
+            const Eigen::VectorXd &y,
+            Eigen::Vector3d &force,   // force in global coordinate space
+            Eigen::Vector3d &torque) override;
     double TimeStep(void);
 
     TimeSpec GetCurrentTime(void);

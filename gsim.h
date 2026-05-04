@@ -2,6 +2,7 @@
 #define GSIM_H
 
 #include "caams.hpp"
+#include "dormand_prince.h"
 #include "image.h"
 //#define GL_GLEXT_PROTOTYPES 1
 //#include <GL/gl.h>
@@ -20,6 +21,12 @@
 
 #define SPHERE_N_LATITUDE 64
 #define SPHERE_N_LONGITUDE 128
+
+#define R_OFFSET 0
+#define V_OFFSET 3
+#define P_OFFSET 6
+#define PDOT_OFFSET 10
+#define BODY_OFFSET 14
 
 class System;
 
@@ -59,7 +66,8 @@ private:
     void InitializeCursor(void);
     void DeleteCursor(void);
 public:
-	double m_mass;
+    int y_offset; // y state vector offset
+    double m_mass;
     double m_radius;
     Eigen::Vector3d m_position;
     Eigen::Vector3d m_velocity;
@@ -104,8 +112,12 @@ public:
     virtual void Update(double dt);
     virtual void ForceAndTorque(
             double dt,
+            const Eigen::VectorXd &y, // state vector
             Eigen::Vector3d &force,   // force in global coordinate space
             Eigen::Vector3d &torque); // torque in body coordinate space
+    virtual Eigen::Vector3d AtmosphericDrag(
+            Eigen::Vector3d &r,
+            Eigen::Vector3d &v);
     virtual double TimeStep(void);
     double CurvatureTimeStep(void);
     virtual Eigen::Vector3d rk_acceleration(
@@ -121,12 +133,14 @@ struct BodyPair
     Body *body2;
     BodyPair(Body* body1, Body* body2):
         body1(body1), body2(body2) {}
-    void calculate_forces(void);
+    void calculate_forces(Eigen::VectorXd const &y);
 };
 
 class System
 {
 private:
+    int current_y_offset;
+    DormandPrince integrator;
     std::list<Body*> m_bodies;
     std::list<BodyPair> m_body_pairs;
     int n_proc_threads;
@@ -143,21 +157,19 @@ public:
     void RestoreState(void);
     Eigen::Vector3d accelerationAtPoint(Eigen::Vector3d p);
 private:
+    // The derivative of the state vector
+    Eigen::VectorXd dy_func(double t, Eigen::VectorXd y);
     void rkPrepare(void);
     void rkUpdate(double dt);
+    double rkTimeStep(void);
     void rkAccelerations( double dt );
-    void rkForces( std::list<BodyPair>::iterator first_pair,
-                   std::list<BodyPair>::iterator last_pair);
-    void ortho_p_dot(Eigen::Vector4d const &p, Eigen::Vector4d &pdot);
-	void rkPhase1Positions( void );
-	void rkPhase2Positions( double p_dt );
-	void rkPhase3Positions( double p_dt );
-	void rkPhase4Positions( double p_dt );
-	void rkPhase1Integrate( double p_dt );
-	void rkPhase2Integrate( double p_dt );
-	void rkPhase3Integrate( double p_dt );
-	void rkPhase4Integrate( double p_dt );
-    double rkTimeStep( void );
+    void rkInterBodyForces( std::list<BodyPair>::iterator first_pair,
+                   std::list<BodyPair>::iterator last_pair,
+                   Eigen::VectorXd const &y);
+    Eigen::Vector4d ortho_p_dot(
+            Eigen::Vector4d const &p,
+            Eigen::Vector4d const &pdot);
+    void constrainRotations(Eigen::VectorXd &y);
 };
 
 #endif

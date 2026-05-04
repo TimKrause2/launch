@@ -33,9 +33,10 @@ CoastManeuver::~CoastManeuver()
 {}
 
 void CoastManeuver::ForceAndTorque(
-            double dt,
-            Eigen::Vector3d &force,
-            Eigen::Vector3d &torque)
+        double dt,
+        const Eigen::VectorXd &y,
+        Eigen::Vector3d &force,
+        Eigen::Vector3d &torque)
 {
     force = Eigen::Vector3d::Zero();
     torque = Eigen::Vector3d::Zero();
@@ -70,11 +71,15 @@ LaunchManeuver::~LaunchManeuver()
 {}
 
 void LaunchManeuver::ForceAndTorque(
-            double dt,
-            Eigen::Vector3d &force,
-            Eigen::Vector3d &torque)
+        double dt,
+        const Eigen::VectorXd &y,
+        Eigen::Vector3d &force,
+        Eigen::Vector3d &torque)
 {
-    Eigen::Vector3d r_sat_earth = satellite->m_rk_position - satellite->primary_body->m_rk_position;
+
+    Eigen::Vector3d r_sat_earth =
+            y.segment<3>(satellite->y_offset + R_OFFSET) -
+            y.segment<3>(satellite->primary_body->y_offset + R_OFFSET);
     Eigen::Vector3d n_r = r_sat_earth.normalized();
     Eigen::Vector3d n_theta = h_norm.cross(n_r);
 
@@ -99,9 +104,10 @@ ConstantAccelerationManeuver::ConstantAccelerationManeuver(Eigen::Vector3d force
 ConstantAccelerationManeuver::~ConstantAccelerationManeuver(){}
 
 void ConstantAccelerationManeuver::ForceAndTorque(
-            double dt,
-            Eigen::Vector3d &force,
-            Eigen::Vector3d &torque){
+        double dt,
+        const Eigen::VectorXd &y,
+        Eigen::Vector3d &force,
+        Eigen::Vector3d &torque){
     force = ConstantAccelerationManeuver::force;
     torque = Eigen::Vector3d::Zero();
 }
@@ -119,12 +125,17 @@ DirectedAccelerationManeuver::DirectedAccelerationManeuver(
 }
 
 void DirectedAccelerationManeuver::ForceAndTorque(
-            double dt,
-            Eigen::Vector3d &force,
-            Eigen::Vector3d &torque)
+        double dt,
+        const Eigen::VectorXd &y,
+        Eigen::Vector3d &force,
+        Eigen::Vector3d &torque)
 {
-    Eigen::Vector3d r = satellite->m_rk_position - satellite->primary_body->m_rk_position;
-    Eigen::Vector3d v = satellite->m_rk_velocity - satellite->primary_body->m_rk_velocity;
+    Eigen::Vector3d r =
+            y.segment<3>(satellite->y_offset + R_OFFSET) -
+            y.segment<3>(satellite->primary_body->y_offset + R_OFFSET);
+    Eigen::Vector3d v =
+            y.segment<3>(satellite->y_offset + V_OFFSET) -
+            y.segment<3>(satellite->primary_body->y_offset + V_OFFSET);
     Eigen::Matrix3d A_vehicle = vehicle_basis(r,v);
     Eigen::Vector3d n_acc = sequencer.GetDir(t + dt);
     force = A_vehicle*n_acc*thrust*satellite->m_mass;
@@ -145,9 +156,10 @@ DirectedAcceleration3dManeuver::DirectedAcceleration3dManeuver(
 }
 
 void DirectedAcceleration3dManeuver::ForceAndTorque(
-            double dt,
-            Eigen::Vector3d &force,
-            Eigen::Vector3d &torque)
+        double dt,
+        const Eigen::VectorXd &y,
+        Eigen::Vector3d &force,
+        Eigen::Vector3d &torque)
 {
     Eigen::Vector3d n_acc = sequencer.GetDir(t + dt);
     force = n_acc*thrust*satellite->m_mass;
@@ -170,13 +182,15 @@ ThrustVectorManeuver::ThrustVectorManeuver(
 }
 
 void ThrustVectorManeuver::ForceAndTorque(
-            double dt,
-            Eigen::Vector3d &force,
-            Eigen::Vector3d &torque)
+        double dt,
+        const Eigen::VectorXd &y,
+        Eigen::Vector3d &force,
+        Eigen::Vector3d &torque)
 {
     Eigen::Vector3d Fb = sequencer.GetDir(t + dt) * thrust * satellite->m_mass;
     torque = rp.cross(Fb);
-    Eigen::Matrix3d A = caams::Ap(satellite->rk_p);
+    Eigen::Vector4d p = y.segment<4>(satellite->y_offset + P_OFFSET);
+    Eigen::Matrix3d A = caams::Ap(p);
     force = A*Fb;
 }
 
@@ -214,19 +228,23 @@ void SurfaceManeuver::Update(double dt)
 
 void SurfaceManeuver::ForceAndTorque(
         double dt,
+        const Eigen::VectorXd &y,
         Eigen::Vector3d &force,   // force in global coordinate space
         Eigen::Vector3d &torque)
 {
     // balalnce the force of gravity from the primary body
     double mu = G_gravity * satellite->primary_body->m_mass;
-    Eigen::Vector3d r = satellite->m_rk_position - satellite->primary_body->m_rk_position;
+    Eigen::Vector3d r =
+            y.segment<3>(satellite->y_offset + R_OFFSET) -
+            y.segment<3>(satellite->primary_body->y_offset + R_OFFSET);
     double a_gravity = mu/r.squaredNorm();
     force = r.normalized()*a_gravity;
 
     // add the force due to being constrained to the surface
     Eigen::Vector3d omega = caams::omega_p_dot(
-                satellite->primary_body->rk_p,
-                satellite->primary_body->rk_pdot);
+                y.segment<4>(satellite->primary_body->y_offset + P_OFFSET),
+                y.segment<4>(satellite->primary_body->y_offset + PDOT_OFFSET));
+
     Eigen::Vector3d v = omega.cross(r);
     force += omega.cross(v);
     force *= satellite->m_mass;
@@ -246,10 +264,13 @@ ElevatorManeuver::ElevatorManeuver(
 
 void ElevatorManeuver::ForceAndTorque(
         double dt,
+        const Eigen::VectorXd &y,
         Eigen::Vector3d &force,   // force in global coordinate space
         Eigen::Vector3d &torque)
 {
-    Eigen::Vector3d r = satellite->m_rk_position - satellite->primary_body->m_rk_position;
+    Eigen::Vector3d r =
+            y.segment<3>(satellite->y_offset + R_OFFSET) -
+            y.segment<3>(satellite->primary_body->y_offset + R_OFFSET);
     force = r.normalized()*thrust*satellite->m_mass;
 
     torque = Eigen::Vector3d::Zero();
@@ -300,6 +321,7 @@ void ReentryTestManeuver::Update(double dt)
 
 void ReentryTestManeuver::ForceAndTorque(
         double dt,
+        const Eigen::VectorXd &y,
         Eigen::Vector3d &force,   // force in global coordinate space
         Eigen::Vector3d &torque)
 {

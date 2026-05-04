@@ -19,7 +19,8 @@ double body_rot_energy(Body* body)
 int main(void)
 {
     Eigen::Vector3d pos_earth = Eigen::Vector3d::Zero();
-    Eigen::Vector3d vel_earth = Eigen::Vector3d::Zero();
+    Eigen::Vector3d vel_earth;
+    vel_earth << 1.0, 0.0, 0.0;
     Eigen::Vector4d p_identity;
     p_identity << 1.0, 0.0, 0.0, 0.0;
     Eigen::Vector4d p_earth = p_identity;
@@ -50,6 +51,8 @@ int main(void)
         system.rkIntegrate(1.0/60.0);
         double Krot = body_rot_energy(body);
         std::cout << "ratio:" << Krot/Krot0 << std::endl;
+        std::cout << "position:\n" << body->m_position << std::endl;
+        std::cout << "velocity:\n" << body->m_velocity << std::endl;
     }
 
     return 0;

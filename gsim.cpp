@@ -231,6 +231,7 @@ void Body::Update(double dt)
 
 void Body:: ForceAndTorque(
         double dt,
+        const Eigen::VectorXd &y,
         Eigen::Vector3d &force,   // force in global coordinate space
         Eigen::Vector3d &torque)
 {
@@ -238,9 +239,16 @@ void Body:: ForceAndTorque(
     torque = Eigen::Vector3d::Zero();
 }
 
+Eigen::Vector3d Body::AtmosphericDrag(
+        Eigen::Vector3d &r,
+        Eigen::Vector3d &v)
+{
+    return Eigen::Vector3d::Zero();
+}
+
 double Body::TimeStep(void)
 {
-    return CurvatureTimeStep();
+    return 1e9;
 }
 
 double Body::CurvatureTimeStep()
@@ -270,26 +278,36 @@ Eigen::Vector3d Body::rk_acceleration(
     return -r.normalized()*mag_a;
 }
 
-void BodyPair::calculate_forces(void)
+void BodyPair::calculate_forces(Eigen::VectorXd const &y)
 {
     // vector from body1 to body2
-    Eigen::Vector3d r_21 = body2->m_rk_position - body1->m_rk_position;
+    Eigen::Vector3d r1 = y.segment<3>(body1->y_offset + R_OFFSET);
+    Eigen::Vector3d r2 = y.segment<3>(body2->y_offset + R_OFFSET);
+    Eigen::Vector3d r_21 = r2 - r1;
+    Eigen::Vector3d r_12 = -r_21;
+    Eigen::Vector3d v1 = y.segment<3>(body1->y_offset + V_OFFSET);
+    Eigen::Vector3d v2 = y.segment<3>(body2->y_offset + V_OFFSET);
+    Eigen::Vector3d v_21 = v2 - v1;
+    Eigen::Vector3d v_12 = -v_21;
     double mag_r2 = r_21.squaredNorm();
     double F = G_gravity*body1->m_mass*body2->m_mass/mag_r2;
     Eigen::Vector3d F_12 = r_21/sqrt(mag_r2)*F;
-    body1->m_rk_force += F_12;
-    body2->m_rk_force -= F_12;
+    body1->m_rk_force += body2->AtmosphericDrag(r_12, v_12) + F_12;
+    body2->m_rk_force += body1->AtmosphericDrag(r_21, v_21) - F_12;
 }
 
 System::System(void)
 {
     n_proc_threads = std::thread::hardware_concurrency();
     m_threads.resize(n_proc_threads);
+    current_y_offset = 0;
 }
 
 void System::AddBody(Body* p_body)
 {
 	m_bodies.push_back(p_body);
+    p_body->y_offset = current_y_offset;
+    current_y_offset += BODY_OFFSET;
 }
 
 void System::rkPrepare()
@@ -310,25 +328,142 @@ void System::rkUpdate(double dt)
     }
 }
 
-void System::rkAccelerations( double dt )
+double System::rkTimeStep(void)
 {
+    double r = 1e9;
+    std::list<Body*>::iterator l_it_b1;
+    for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+        r = fmin(r, (*l_it_b1)->TimeStep());
+    }
+    return r;
+}
+
+// void System::rkAccelerations( double dt )
+// {
+//     std::list<Body*>::iterator l_it_b1;
+//     std::list<Body*>::iterator l_it_b2;
+//     int n_bodies=0;
+// 	// set all accelerations to zero
+// 	for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+//         if(!(*l_it_b1)->Enabled()) continue;
+//         Eigen::Vector3d force;
+//         Eigen::Vector3d torque;
+//         (*l_it_b1)->ForceAndTorque(dt, force, torque);
+//         (*l_it_b1)->m_rk_force = force;
+//         (*l_it_b1)->rk_pddot = p_ddot_solve(
+//                     (*l_it_b1)->rk_p,
+//                     (*l_it_b1)->rk_pdot,
+//                     (*l_it_b1)->Jp,
+//                     torque);
+//         n_bodies++;
+// 	}
+
+//     // clear the space for the pairs list
+//     int n_pairs = n_bodies*(n_bodies-1)/2;
+//     m_body_pairs.clear();
+
+//     // create the body pair list
+//     for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+//         if(!(*l_it_b1)->Enabled()) continue;
+//         l_it_b2 = l_it_b1;
+//         l_it_b2++;
+//         for( ; l_it_b2!=m_bodies.end(); l_it_b2++){
+//             if(!(*l_it_b2)->Enabled()) continue;
+//             m_body_pairs.emplace_back(*l_it_b1, *l_it_b2);
+//         }
+//     }
+
+//     // execute the pair list
+//     std::list<BodyPair>::iterator bp_it1;
+//     std::list<BodyPair>::iterator bp_it2;
+//     if(n_pairs<n_proc_threads){
+//         bp_it1 = m_body_pairs.begin();
+//         bp_it2 = bp_it1;
+//         for(int i=0;i<n_pairs;i++)
+//             bp_it2++;
+//         rkForces(bp_it1, bp_it2);
+//     }else{
+//         std::list<std::thread>::iterator th_it;
+//         th_it = m_threads.begin();
+//         bp_it1 = m_body_pairs.begin();
+//         int i_bp_last = 0;
+//         for(int i=0;i<n_proc_threads;i++,th_it++){
+//             int i_bp_next = (i+1)*n_pairs/n_proc_threads;
+//             int n = i_bp_next - i_bp_last;
+//             bp_it2 = bp_it1;
+//             for(int j=0;j<n;j++)
+//                 bp_it2++;
+//             *th_it = std::thread(&System::rkForces, this, bp_it1, bp_it2);
+//             bp_it1 = bp_it2;
+//             i_bp_last = i_bp_next;
+//         }
+//         th_it = m_threads.begin();
+//         for(int i=0;i<n_proc_threads;i++, th_it++)
+//             (*th_it).join();
+//     }
+
+
+//     // calculate accelerations from the forces
+// 	for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+//         (*l_it_b1)->m_rk_acceleration = (*l_it_b1)->m_rk_force/(*l_it_b1)->m_mass;
+// 	}
+// }
+
+void System::rkInterBodyForces(
+        std::list<BodyPair>::iterator first_pair,
+        std::list<BodyPair>::iterator last_pair,
+        Eigen::VectorXd const &y)
+{
+    std::list<BodyPair>::iterator it;
+    for(it = first_pair; it != last_pair; it++){
+        (*it).calculate_forces(y);
+    }
+}
+
+Eigen::Vector4d System::ortho_p_dot(
+        Eigen::Vector4d const &p,
+        Eigen::Vector4d const &pdot)
+{
+    double sigma = p.dot(pdot);
+    return pdot - sigma*p;
+}
+
+void System::constrainRotations(Eigen::VectorXd &y)
+{
+    for(int y_offset=0;y_offset<current_y_offset;y_offset+=BODY_OFFSET)
+    {
+        y.segment<4>(y_offset+P_OFFSET).normalize();
+        y.segment<4>(y_offset+PDOT_OFFSET) =
+            ortho_p_dot(y.segment<4>(y_offset+P_OFFSET),
+                        y.segment<4>(y_offset+PDOT_OFFSET));
+    }
+}
+
+Eigen::VectorXd System::dy_func(double t, Eigen::VectorXd y)
+{
+    Eigen::VectorXd dy(current_y_offset);
+
+    // initialize the body generated forces and torques
+    // caclulate p_ddot for each body
+    // while travesring the list generate the body pair list
+    // for gravity and atmospheric drag
     std::list<Body*>::iterator l_it_b1;
     std::list<Body*>::iterator l_it_b2;
     int n_bodies=0;
-	// set all accelerations to zero
-	for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
-        if(!(*l_it_b1)->Enabled()) continue;
+    // set all accelerations to zero
+    for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
         Eigen::Vector3d force;
         Eigen::Vector3d torque;
-        (*l_it_b1)->ForceAndTorque(dt, force, torque);
+        (*l_it_b1)->ForceAndTorque(t, y, force, torque);
         (*l_it_b1)->m_rk_force = force;
-        (*l_it_b1)->rk_pddot = p_ddot_solve(
-                    (*l_it_b1)->rk_p,
-                    (*l_it_b1)->rk_pdot,
-                    (*l_it_b1)->Jp,
-                    torque);
+        Eigen::Vector4d p = y.segment<4>((*l_it_b1)->y_offset + P_OFFSET);
+        Eigen::Vector4d pdot = y.segment<4>((*l_it_b1)->y_offset + PDOT_OFFSET);
+        dy.segment<4>((*l_it_b1)->y_offset + P_OFFSET) =
+                pdot;
+        dy.segment<4>((*l_it_b1)->y_offset + PDOT_OFFSET) =
+                p_ddot_solve(p, pdot, (*l_it_b1)->Jp, torque);
         n_bodies++;
-	}
+    }
 
     // clear the space for the pairs list
     int n_pairs = n_bodies*(n_bodies-1)/2;
@@ -336,11 +471,9 @@ void System::rkAccelerations( double dt )
 
     // create the body pair list
     for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
-        if(!(*l_it_b1)->Enabled()) continue;
         l_it_b2 = l_it_b1;
         l_it_b2++;
         for( ; l_it_b2!=m_bodies.end(); l_it_b2++){
-            if(!(*l_it_b2)->Enabled()) continue;
             m_body_pairs.emplace_back(*l_it_b1, *l_it_b2);
         }
     }
@@ -353,7 +486,7 @@ void System::rkAccelerations( double dt )
         bp_it2 = bp_it1;
         for(int i=0;i<n_pairs;i++)
             bp_it2++;
-        rkForces(bp_it1, bp_it2);
+        rkInterBodyForces(bp_it1, bp_it2, y);
     }else{
         std::list<std::thread>::iterator th_it;
         th_it = m_threads.begin();
@@ -365,7 +498,7 @@ void System::rkAccelerations( double dt )
             bp_it2 = bp_it1;
             for(int j=0;j<n;j++)
                 bp_it2++;
-            *th_it = std::thread(&System::rkForces, this, bp_it1, bp_it2);
+            *th_it = std::thread(&System::rkInterBodyForces, this, bp_it1, bp_it2, y);
             bp_it1 = bp_it2;
             i_bp_last = i_bp_next;
         }
@@ -374,158 +507,15 @@ void System::rkAccelerations( double dt )
             (*th_it).join();
     }
 
-
     // calculate accelerations from the forces
-	for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
-        (*l_it_b1)->m_rk_acceleration = (*l_it_b1)->m_rk_force/(*l_it_b1)->m_mass;
-	}
-}
-
-void System::rkForces( std::list<BodyPair>::iterator first_pair,
-               std::list<BodyPair>::iterator last_pair)
-{
-    std::list<BodyPair>::iterator it;
-    for(it = first_pair; it != last_pair; it++){
-        (*it).calculate_forces();
+    for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+        dy.segment<3>((*l_it_b1)->y_offset + R_OFFSET) =
+                y.segment<3>((*l_it_b1)->y_offset + V_OFFSET);
+        dy.segment<3>((*l_it_b1)->y_offset + V_OFFSET) =
+                (*l_it_b1)->m_rk_force/(*l_it_b1)->m_mass;
     }
-}
 
-void System::ortho_p_dot(Eigen::Vector4d const &p, Eigen::Vector4d &pdot)
-{
-    double sigma = p.dot(pdot);
-    pdot -= sigma*p;
-}
-
-void System::rkPhase1Positions( void )
-{
-    std::list<Body*>::iterator l_it;
-	for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-        (*l_it)->m_rk_position = (*l_it)->m_position;
-        (*l_it)->m_rk_velocity = (*l_it)->m_velocity;
-        (*l_it)->rk_p = (*l_it)->p;
-        (*l_it)->rk_pdot = (*l_it)->pdot;
-	}
-}
-
-void System::rkPhase2Positions( double p_dt )
-{
-    std::list<Body*>::iterator l_it;
-	for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-        (*l_it)->m_rk_position = (*l_it)->m_position + (*l_it)->m_kr.col(0)*(p_dt*0.5);
-        (*l_it)->m_rk_velocity = (*l_it)->m_velocity + (*l_it)->m_kv.col(0)*(p_dt*0.5);
-        (*l_it)->rk_p = (*l_it)->p + (*l_it)->k_p_dot.col(0)*(p_dt*0.5);
-        (*l_it)->rk_p.normalize();
-        (*l_it)->rk_pdot = (*l_it)->pdot + (*l_it)->k_p_ddot.col(0)*(p_dt*0.5);
-        ortho_p_dot((*l_it)->rk_p, (*l_it)->rk_pdot);
-	}
-}
-
-void System::rkPhase3Positions( double p_dt )
-{
-    std::list<Body*>::iterator l_it;
-	for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-        (*l_it)->m_rk_position = (*l_it)->m_position + (*l_it)->m_kr.col(1)*(p_dt*0.5);
-        (*l_it)->m_rk_velocity = (*l_it)->m_velocity + (*l_it)->m_kv.col(1)*(p_dt*0.5);
-        (*l_it)->rk_p = (*l_it)->p + (*l_it)->k_p_dot.col(1)*(p_dt*0.5);
-        (*l_it)->rk_p.normalize();
-        (*l_it)->rk_pdot = (*l_it)->pdot + (*l_it)->k_p_ddot.col(1)*(p_dt*0.5);
-        ortho_p_dot((*l_it)->rk_p, (*l_it)->rk_pdot);
-    }
-}
-
-void System::rkPhase4Positions( double p_dt )
-{
-    std::list<Body*>::iterator l_it;
-	for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-        (*l_it)->m_rk_position = (*l_it)->m_position + (*l_it)->m_kr.col(2)*p_dt;
-        (*l_it)->m_rk_velocity = (*l_it)->m_velocity + (*l_it)->m_kv.col(2)*p_dt;
-        (*l_it)->rk_p = (*l_it)->p + (*l_it)->k_p_dot.col(2)*p_dt;
-        (*l_it)->rk_p.normalize();
-        (*l_it)->rk_pdot = (*l_it)->pdot + (*l_it)->k_p_ddot.col(2)*p_dt;
-        ortho_p_dot((*l_it)->rk_p, (*l_it)->rk_pdot);
-    }
-}
-
-void System::rkPhase1Integrate( double p_dt )
-{
-    std::list<Body*>::iterator l_it;
-	for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-//        (*l_it)->m_kr.sub( (*l_it)->m_velocity, 1, 1);
-//        (*l_it)->m_kv.sub( (*l_it)->m_rk_acceleration, 1, 1);
-        (*l_it)->m_kr.col(0) = (*l_it)->m_velocity;
-        (*l_it)->m_kv.col(0) = (*l_it)->m_rk_acceleration;
-        (*l_it)->k_p_dot.col(0) = (*l_it)->rk_pdot;
-        (*l_it)->k_p_ddot.col(0) = (*l_it)->rk_pddot;
-    }
-}
-
-void System::rkPhase2Integrate( double p_dt )
-{
-    std::list<Body*>::iterator l_it;
-	for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-//        (*l_it)->m_kr.sub( (*l_it)->m_velocity + (*l_it)->m_kv.sub(3,1,1,1)*(p_dt*0.5), 1, 2 );
-//        (*l_it)->m_kv.sub( (*l_it)->m_rk_acceleration, 1, 2);
-        (*l_it)->m_kr.col(1) = (*l_it)->m_velocity + (*l_it)->m_kv.col(0)*(p_dt*0.5);
-        (*l_it)->m_kv.col(1) = (*l_it)->m_rk_acceleration;
-        (*l_it)->k_p_dot.col(1) = (*l_it)->rk_pdot;
-        (*l_it)->k_p_ddot.col(1) = (*l_it)->rk_pddot;
-    }
-}
-
-void System::rkPhase3Integrate( double p_dt )
-{
-    std::list<Body*>::iterator l_it;
-	for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-//        (*l_it)->m_kr.sub( (*l_it)->m_velocity + (*l_it)->m_kv.sub(3,1,1,2)*(p_dt*0.5), 1, 3 );
-//        (*l_it)->m_kv.sub( (*l_it)->m_rk_acceleration, 1, 3);
-        (*l_it)->m_kr.col(2) = (*l_it)->m_velocity + (*l_it)->m_kv.col(1)*(p_dt*0.5);
-        (*l_it)->m_kv.col(2) = (*l_it)->m_rk_acceleration;
-        (*l_it)->k_p_dot.col(2) = (*l_it)->rk_pdot;
-        (*l_it)->k_p_ddot.col(2) = (*l_it)->rk_pddot;
-    }
-}
-
-void System::rkPhase4Integrate( double p_dt )
-{
-    std::list<Body*>::iterator l_it;
-	for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-        (*l_it)->m_kr.col(3) = (*l_it)->m_velocity + (*l_it)->m_kv.col(2)*p_dt;
-        (*l_it)->m_kv.col(3) = (*l_it)->m_rk_acceleration;
-        (*l_it)->k_p_dot.col(3) = (*l_it)->rk_pdot;
-        (*l_it)->k_p_ddot.col(3) = (*l_it)->rk_pddot;
-        Eigen::Vector4d c;
-        c << 1.0, 2.0, 2.0, 1.0;
-        c *= p_dt/6.0;
-        (*l_it)->m_velocity += (*l_it)->m_kv*c;
-        (*l_it)->m_position += (*l_it)->m_kr*c;
-        (*l_it)->p += (*l_it)->k_p_dot*c;
-        (*l_it)->p.normalize();
-        (*l_it)->pdot += (*l_it)->k_p_ddot*c;
-        ortho_p_dot((*l_it)->p, (*l_it)->pdot);
-    }
-}
-
-double System::rkTimeStep()
-{
-    double dt_min;
-    std::list<Body*>::iterator l_it;
-    dt_min = 1e9;
-    for(l_it=m_bodies.begin(); l_it!=m_bodies.end(); l_it++){
-        if(!(*l_it)->Enabled()) continue;
-        double dt_test = (*l_it)->TimeStep();
-        if(dt_test<dt_min){
-            dt_min = dt_test;
-        }
-    }
-    return dt_min;
+    return dy;
 }
 
 void System::rkIntegrate( double p_dt_total )
@@ -533,34 +523,52 @@ void System::rkIntegrate( double p_dt_total )
     double t=0.0;
     double dt;
 
+    Eigen::VectorXd y0(current_y_offset);
+    Eigen::VectorXd y1(current_y_offset);
+
+    // initialize y0
+    std::list<Body*>::iterator l_it_b1;
+    for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+        int y_offset = (*l_it_b1)->y_offset;
+        y0.segment<3>(y_offset + R_OFFSET) = (*l_it_b1)->m_position;
+        y0.segment<3>(y_offset + V_OFFSET) = (*l_it_b1)->m_velocity;
+        y0.segment<4>(y_offset + P_OFFSET) = (*l_it_b1)->p;
+        y0.segment<4>(y_offset + PDOT_OFFSET) = (*l_it_b1)->pdot;
+    }
+
+    // for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+    //     Eigen::Vector3d force;
+    //     Eigen::Vector3d torque;
+    //     (*l_it_b1)->ForceAndTorque(t, y0, force, torque);
+    // }
+
     while(t<p_dt_total){
         double dt_remain = p_dt_total - t;
         rkPrepare();
-        rkPhase1Positions();
-        rkAccelerations(0.0);
         double dt_max = rkTimeStep();
-        if(dt_remain>dt_max){
-            dt = dt_max;
-        }else{
-            dt = dt_remain;
-        }
-        rkPhase1Integrate(dt);
-
-        rkPhase2Positions(dt);
-        rkAccelerations(dt*0.5);
-        rkPhase2Integrate(dt);
-
-        rkPhase3Positions(dt);
-        rkAccelerations(dt*0.5);
-        rkPhase3Integrate(dt);
-
-        rkPhase4Positions(dt);
-        rkAccelerations(dt);
-        rkPhase4Integrate(dt);
-
+        dt = fmin(dt_remain, dt_max);
+        integrator.integrate(
+            y1, y0,
+            [this](double t, Eigen::VectorXd y){
+            return this->dy_func(t, y);},
+            // std::bind(&System::dy_func,
+            //           this,
+            //           std::placeholders::_1,
+            //           std::placeholders::_2),
+            0, dt);
+        constrainRotations(y1);
         rkUpdate(dt);
-
+        y0 = y1;
         t+=dt;
+    }
+
+    // transfer the results back to the objects
+    for( l_it_b1=m_bodies.begin(); l_it_b1!=m_bodies.end(); l_it_b1++){
+        int y_offset = (*l_it_b1)->y_offset;
+        (*l_it_b1)->m_position = y1.segment<3>(y_offset + R_OFFSET);
+        (*l_it_b1)->m_velocity = y1.segment<3>(y_offset + V_OFFSET);
+        (*l_it_b1)->p = y1.segment<4>(y_offset + P_OFFSET);
+        (*l_it_b1)->pdot = y1.segment<4>(y_offset + PDOT_OFFSET);
     }
 }
 

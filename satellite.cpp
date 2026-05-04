@@ -59,13 +59,14 @@ void Satellite::Update(double dt)
 }
 
 void Satellite::ForceAndTorque(
-            double dt,
-            Eigen::Vector3d &force,   // force in global coordinate space
-            Eigen::Vector3d &torque)
+        double dt,
+        const Eigen::VectorXd &y,
+        Eigen::Vector3d &force,   // force in global coordinate space
+        Eigen::Vector3d &torque)
 {
     Maneuver* maneuver = maneuverQueue.CurrentManeuver();
     if(maneuver){
-        maneuver->ForceAndTorque(dt, force, torque);
+        maneuver->ForceAndTorque(dt, y, force, torque);
     }else{
         force = Eigen::Vector3d::Zero();
         torque = Eigen::Vector3d::Zero();
@@ -75,9 +76,9 @@ void Satellite::ForceAndTorque(
 double Satellite::TimeStep()
 {
     if(eventQueue.Empty()){
-        return CurvatureTimeStep();
+        return 1e9;
     }else{
-        return fmin(CurvatureTimeStep(),eventQueue.NextEvent());
+        return eventQueue.NextEvent();
     }
 }
 
