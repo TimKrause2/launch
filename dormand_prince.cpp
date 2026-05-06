@@ -39,7 +39,12 @@ void DormandPrince::integrate_step(
     for(int i=0;i<y0.rows();i++)
     {
         if(dy1(i)!=0.0){
-            double this_error = fabs((dy1(i)-dy1p(i))/dy1(i));
+            double this_error;
+            if(fabs(dy1(i)) > 0.1 ){
+                this_error = fabs((dy1(i)-dy1p(i))/dy1(i));
+            }else{
+                this_error = fabs(dy1(i)-dy1p(i));
+            }
             if(this_error > error){
                 error = this_error;
             }

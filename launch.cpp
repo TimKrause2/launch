@@ -250,9 +250,9 @@ void LaunchData::init(void)
     //             launch_longitude*RAD_PER_DEG,
     //             launch_heading*RAD_PER_DEG);
     body_sat->ScheduleICBMLaunch(
-                10*RAD_PER_DEG, -20*RAD_PER_DEG,
+                1*RAD_PER_DEG, -20*RAD_PER_DEG,
                 5.0,
-                10*RAD_PER_DEG, 20*RAD_PER_DEG,
+                1*RAD_PER_DEG, 20*RAD_PER_DEG,
                 1000.0);
 
     earth_sat_system.AddBody(body_earth);
